@@ -67,6 +67,7 @@ def check_packages(ctx, config):
 
     If there are missing packages, fail the job.
     """
+    
     for task in ctx.config['tasks']:
         if task.keys()[0] == 'buildpackages':
             log.info("Checking packages skipped because "

@@ -777,8 +777,10 @@ class GitbuilderProject(object):
         if not self.remote:
             raise NoRemoteError()
         if self.remote.os.package_type == 'rpm':
+	    log.info("dehao ===>>> install rpm repo...")    
             self._install_rpm_repo()
         elif self.remote.os.package_type == 'deb':
+	    log.info("dehao ===>>> install deb repo...")    
             self._install_deb_repo()
 
     def _install_rpm_repo(self):
@@ -803,6 +805,7 @@ class GitbuilderProject(object):
             self.remote.run(args=['sudo', 'yum', '-y', 'install', url])
 
     def _install_deb_repo(self):
+	log.info("dehao ===>>> _install deb repo in parent class ...GitbuilderProject...")
         self.remote.run(
             args=[
                 'echo', 'deb', self.base_url, self.codename, 'main',
@@ -968,6 +971,7 @@ class ShamanProject(GitbuilderProject):
         )
 
     def _get_repo(self):
+        log.info("dehao ===>>> repo_url is %s", str(self.repo_url))
         resp = requests.get(self.repo_url)
         resp.raise_for_status()
         return resp.text
@@ -981,6 +985,7 @@ class ShamanProject(GitbuilderProject):
         )
 
     def _install_deb_repo(self):
+	log.info("dehao ===>>> install deb repo in child class - ShamanProject")
         repo = self._get_repo()
         sudo_write_file(
             self.remote,
@@ -1007,6 +1012,8 @@ def get_builder_project():
     """
     if config.use_shaman is True:
         builder_class = ShamanProject
+        log.info("dehao ===>>> builder is ShamanProject...")
     else:
         builder_class = GitbuilderProject
+        log.info("dehao ===>>> builder is GitbuilderProject...")
     return builder_class

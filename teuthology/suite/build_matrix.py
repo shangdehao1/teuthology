@@ -54,6 +54,7 @@ def build_matrix(path, subset=None, seed=None):
             (str(subset[0]), str(subset[1]))
         )
     random.seed(seed)
+    log.debug('dehao ==>> path = %s, subset = %s' % (path, subset))
     mat, first, matlimit = _get_matrix(path, subset)
     return generate_combinations(path, mat, first, matlimit)
 
@@ -187,6 +188,8 @@ def generate_combinations(path, mat, generate_from, generate_to):
         ret.append((
             matrix.generate_desc(combine_path, output),
             matrix.generate_paths(path, output, combine_path)))
+    	# log.debug('dehao ==>> %s' % (ret[-1]))
+	# print("obtain new element : ", ret[-1])
     return ret
 
 

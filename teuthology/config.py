@@ -23,6 +23,7 @@ class YamlConfig(collections.MutableMapping):
     _defaults = dict()
 
     def __init__(self, yaml_path=None):
+	log.info('dehao ===>>> the path of teuthology.yaml file is %s', yaml_path)
         self.yaml_path = yaml_path
         if self.yaml_path:
             self.load()

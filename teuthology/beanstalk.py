@@ -12,6 +12,7 @@ log = logging.getLogger(__name__)
 
 
 def connect():
+    log.info('dehao ===>>> teuthology-worker try to connect beanstalkc <ip, port> = <%s, %s>', config.queue_host, config.queue_port)
     host = config.queue_host
     port = config.queue_port
     if host is None or port is None:
@@ -26,6 +27,7 @@ def watch_tube(connection, tube_name):
     Watch a given tube, potentially correcting to 'multi' if necessary. Returns
     the tube_name that was actually used.
     """
+    log.info('dehao ===>>> teuthology-worker begin to watch %s', tube_name)
     if ',' in tube_name:
         log.debug("Correcting tube name to 'multi'")
         tube_name = 'multi'

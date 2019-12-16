@@ -428,6 +428,7 @@ def teuthology_schedule(args, verbose, dry_run, log_prefix=''):
         os.path.dirname(sys.argv[0]),
         'teuthology-schedule')
     args.insert(0, exec_path)
+    log.info('dehao ===>>> args[0] = %s', exec_path)
     if dry_run:
         # Quote any individual args so that individual commands can be copied
         # and pasted in order to execute them individually.

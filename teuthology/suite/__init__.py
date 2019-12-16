@@ -139,9 +139,9 @@ def main(args):
         conf.seed = random.randint(0, 9999)
         log.info('Using random seed=%s', conf.seed)
 
-    run = Run(conf)
+    run = Run(conf) ## 
     name = run.name
-    run.prepare_and_schedule()
+    run.prepare_and_schedule() ##
     if not conf.dry_run and conf.wait:
         return wait(name, config.max_job_time,
                     conf.archive_upload_url)

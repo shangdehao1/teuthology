@@ -29,6 +29,7 @@ def create_key(keytype, key):
     """
     Create an ssh-rsa or ssh-dss key.
     """
+    log.info('dehao ===>>> start to create key...')
     if keytype == 'ssh-rsa':
         return paramiko.rsakey.RSAKey(data=base64.decodestring(key))
     elif keytype == 'ssh-dss':
@@ -62,12 +63,19 @@ def connect(user_at_host, host_key=None, keep_alive=False, timeout=60,
         _create_key = create_key
 
     if host_key is None:
+	log.info('dehao ===>>> host_key is None...')
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         if config.verify_host_keys is True:
+	    log.info('dehao ===>>> ssh try to load host keys')
             ssh.load_system_host_keys()
 
     else:
+	log.info('dehao ===>>> host_key is found...')
         keytype, key = host_key.split(' ', 1)
+        log.info('dehao ===>>> key type is %s', keytype)
+        log.info('dehao ===>>> key is %s........', key[0:10])
+        log.info('dehao ===>>> hostname is %s', host)
+        #log.info('dehao ===>>> host_key is ', str(host_key))
         ssh.get_host_keys().add(
             hostname=host,
             keytype=keytype,
@@ -109,4 +117,5 @@ def connect(user_at_host, host_key=None, keep_alive=False, timeout=60,
                     log.exception(
                         "Error connecting to {host}".format(host=host))
     ssh.get_transport().set_keepalive(keep_alive)
+    log.info('dehao ===>>> connection success.....') 
     return ssh

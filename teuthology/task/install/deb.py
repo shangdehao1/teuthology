@@ -24,7 +24,10 @@ def _update_package_list_and_install(ctx, remote, debs, config):
     :param config: the config dict
     """
 
+    log.info("dehao ===>>> begin to execute _update_package_list_and_install....")
+
     # check for ceph release key
+    log.info("dehao ===>>> add ceph release key...")
     r = remote.run(
         args=[
             'sudo', 'apt-key', 'list', run.Raw('|'), 'grep', 'Ceph',
@@ -43,8 +46,12 @@ def _update_package_list_and_install(ctx, remote, debs, config):
             ],
             stdout=StringIO(),
         )
+    log.info("dehao ===>>> add ceph release key...ok")
 
+    log.info("dehao ===>>> construct builder...")
     builder = _get_builder_project(ctx, remote, config)
+    log.info("dehao ===>>> construct builder...ok")
+
     log.info("Installing packages: {pkglist} on remote deb {arch}".format(
         pkglist=", ".join(debs), arch=builder.arch)
     )
@@ -55,13 +62,14 @@ def _update_package_list_and_install(ctx, remote, debs, config):
         log.info("Installing system (non-project) packages: {pkglist} on remote deb {arch}".format(
             pkglist=", ".join(system_pkglist), arch=builder.arch)
         )
+
     # get baseurl
     log.info('Pulling from %s', builder.base_url)
 
     version = builder.version
     log.info('Package version is %s', version)
 
-    builder.install_repo()
+    builder.install_repo() #### <<<<======
 
     remote.run(args=['sudo', 'apt-get', 'update'], check_status=False)
     install_cmd = [

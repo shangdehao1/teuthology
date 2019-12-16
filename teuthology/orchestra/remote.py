@@ -67,7 +67,8 @@ class Remote(object):
         if timeout:
             args['timeout'] = timeout
 
-        self.ssh = connection.connect(**args)
+	log.info("dehao ===>>> try to connect to host[%s]", args['user_at_host'])
+        self.ssh = connection.connect(**args) ## <<<====
         return self.ssh
 
     def reconnect(self, timeout=None, socket_timeout=None, sleep_time=30):

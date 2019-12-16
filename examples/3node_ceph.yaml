@@ -6,10 +6,10 @@ roles:
 tasks:
 - install:
 - ceph:
-- kclient: [client.0]
-- interactive:
+#- kclient: [client.0]
+#- interactive:
 
 targets:
-  ubuntu@<host1>: ssh-rsa <host1 key>
-  ubuntu@<host2>: ssh-rsa <host2 key>
-  ubuntu@<host3>: ssh-rsa <host3 key>
+  ubuntu@plana200.shangdehao.com: ssh-rsa plana200_ssh_key
+  ubuntu@plana201.shangdehao.com: ssh-rsa plana201_ssh_key
+  ubuntu@plana202.shangdehao.com: ssh-rsa plana202_ssh_key

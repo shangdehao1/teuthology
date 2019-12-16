@@ -245,6 +245,7 @@ def get_initial_tasks(lock, config, machine_type):
 
 def report_outcome(config, archive, summary, fake_ctx):
     """ Reports on the final outcome of the command. """
+    log.info('dehao ===>>> report outcome to paddles')
     status = get_status(summary)
     passed = status == 'pass'
 
@@ -314,8 +315,12 @@ def main(args):
 
     set_up_logging(verbose, archive)
 
+
     # print the command being ran
+    log.info('\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+    log.info('running teuthology command as follwoing : ')
     log.debug("Teuthology command: {0}".format(get_teuthology_command(args)))
+    log.info('<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n')
 
     if owner is None:
         args["--owner"] = owner = get_user()

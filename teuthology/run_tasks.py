@@ -21,22 +21,30 @@ def get_task(name):
     else:
         module_name, task_name = (name, 'task')
 
+    log.info("dehao ===>>> task name = [%s]", task_name)
+    log.info("dehao ===>>> module name = [%s]", module_name)
+    full_module_name = '.'.join(['teuthology.task', module_name])
+    log.info("dehao ===>>> full module name is [%s]", full_module_name)
+
     # First look for the tasks's module inside teuthology
+    log.info("dehao ===>>> import tasks's module from teuthology")
     module = _import('teuthology.task', module_name, task_name)
+
     # If it is not found, try qa/ directory (if it is in sys.path)
     if not module:
+        log.info("dehao ===>>> import tasks's module from teuthology...fails")
+        log.info("dehao ===>>> import tasks's module from qa/ directory...")
         module = _import('tasks', module_name, task_name, fail_on_import_error=True)
+
     try:
         # Attempt to locate the task object inside the module
+	log.info('dehao ===>>> test if task=[%s] is in module=[%s]', task_name, module)
         task = getattr(module, task_name)
         # If we get another module, we need to go deeper
         if isinstance(task, types.ModuleType):
             task = getattr(task, task_name)
     except AttributeError:
-        log.error("No subtask of '{}' named '{}' was found".format(
-            module_name,
-            task_name,
-        ))
+        log.error("No subtask of '{}' named '{}' was found".format(module_name, task_name,))
         raise
     return task
 
@@ -62,6 +70,8 @@ def _import(from_package, module_name, task_name, fail_on_import_error=False):
 def run_one_task(taskname, **kwargs):
     taskname = taskname.replace('-', '_')
     task = get_task(taskname)
+    log.info('dehao ===>>> use %s to run task=%s', str(task), taskname) 
+    # log.info('dehao ===>>> arg is %s', kwargs)
     return task(**kwargs)
 
 
@@ -75,19 +85,27 @@ def run_tasks(tasks, ctx):
     else:
         timer = Timer()
     stack = []
+    print('dehao >>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+    print 'all task include as below : '
+    for kv in tasks:
+      print kv
+    print('dehao <<<<<<<<<<<<<<<<<<<<<<<<<<<<')
     try:
         for taskdict in tasks:
             try:
                 ((taskname, config),) = taskdict.items()
             except (ValueError, AttributeError):
                 raise RuntimeError('Invalid task definition: %s' % taskdict)
-            log.info('Running task %s...', taskname)
+            # log.info('Running task %s...', taskname)
+            log.info('\ndehao ===>>> start running task %s...', taskname)
             timer.mark('%s enter' % taskname)
             manager = run_one_task(taskname, ctx=ctx, config=config)
             if hasattr(manager, '__enter__'):
                 stack.append((taskname, manager))
                 manager.__enter__()
+            log.info('dehao ===>>> finish running task %s...\n', taskname)
     except BaseException as e:
+	log.info('====================================== except begin ==================================')
         if isinstance(e, ConnectionLostError):
             # Prevent connection issues being flagged as failures
             set_status(ctx.summary, 'dead')
@@ -148,7 +166,9 @@ def run_tasks(tasks, ctx):
                 emsg = 'Possible configuration error in yaml file'
                 log.error(emsg)
                 ctx.summary['failure_info'] = emsg
+	log.info('====================================== except over ==================================')
     finally:
+	log.info('====================================== finally begin ==================================')
         try:
             exc_info = sys.exc_info()
             while stack:
@@ -189,4 +209,6 @@ def run_tasks(tasks, ctx):
         finally:
             # be careful about cyclic references
             del exc_info
+	    log.info('====================================== finally over (1) ==================================')
         timer.mark("tasks complete")
+	log.info('====================================== finally over (2) ==================================')

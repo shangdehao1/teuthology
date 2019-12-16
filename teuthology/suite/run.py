@@ -38,18 +38,24 @@ class Run(object):
         self.args = args
         self.name = self.make_run_name()
 
+        print('shangdehao : check if need to fetch ceph repo. ceph_rep is ', self.args.ceph_repo)
         if self.args.ceph_repo:
             config.ceph_git_url = self.args.ceph_repo
+	    print('shangdehao : ceph_git_url is ', config.ceph_git_url)
         if self.args.suite_repo:
             config.ceph_qa_suite_git_url = self.args.suite_repo
+	    print('shangdehao : ceph_qa_suite_git_url is ', config.ceph_qa_suite_git_url)
 
-        self.base_config = self.create_initial_config()
+        self.base_config = self.create_initial_config() ## <<<====
         # caches package versions to minimize requests to gbs
         self.package_versions = dict()
 
+        print('shangdehao : check if need to fetch ceph qa. suite_dir is ', self.args.suite_dir)
         if self.args.suite_dir:
+	    print('shangdehao : no')
             self.suite_repo_path = self.args.suite_dir
         else:
+	    print('shangdehao : yes')
             self.suite_repo_path = util.fetch_repos(
                 self.base_config.suite_branch, test_name=self.name)
 
@@ -113,6 +119,12 @@ class Run(object):
             suite_repo=config.get_ceph_qa_suite_git_url(),
             suite_relpath=self.args.suite_relpath,
         )
+	
+        log.info("dehao ====> distro : %s", self.args.distro)
+        log.info("dehao ====> distro : %s", self.config_input.get('distro'))
+        log.info("dehao ====> distro_version : %s", self.args.distro_version)
+        log.info("dehao ====> distro_version : %s", self.config_input.get('distro_version'))
+	
         return self.build_base_config()
 
     def choose_kernel(self):
@@ -270,6 +282,7 @@ class Run(object):
         conf_dict = substitute_placeholders(dict_templ, self.config_input)
         conf_dict.update(self.kernel_dict)
         job_config = JobConfig.from_dict(conf_dict)
+	# log.info('dehao ====> conf dict = %s', conf_dict) # <<== print all information of jobs.
         job_config.name = self.name
         job_config.priority = self.args.priority
         if self.args.email:
@@ -334,14 +347,17 @@ class Run(object):
         sends an email to the specified address (if one is configured).
         """
         self.base_args = self.build_base_args()
+	print('shangdehao base_yaml_paths size is : ', len(self.base_yaml_paths))
 
         # Make sure the yaml paths are actually valid
         for yaml_path in self.base_yaml_paths:
+            print('shangdehao : yaml_path ', yaml_path)
             full_yaml_path = os.path.join(self.suite_repo_path, yaml_path)
+            print('shangdehao : full_yaml_path ', full_yaml_path)
             if not os.path.exists(full_yaml_path):
                 raise IOError("File not found: " + full_yaml_path)
 
-        num_jobs = self.schedule_suite()
+        num_jobs = self.schedule_suite() ## <<==
 
         if num_jobs:
             self.write_result()
@@ -448,7 +464,10 @@ class Run(object):
         return jobs_missing_packages, jobs_to_schedule
 
     def schedule_jobs(self, jobs_missing_packages, jobs_to_schedule, name):
+        index = 0
         for job in jobs_to_schedule:
+            log.info('dehao ===>>> begin to schedule job %d in this run', index)
+	    index = index + 1
             log.info(
                 'Scheduling %s', job['desc']
             )
@@ -489,7 +508,12 @@ class Run(object):
             'suites',
             self.base_config.suite.replace(':', '/'),
         ))
+        log.debug('dehao: name : %s' % (name))
+        log.debug('dehao: arch : %s' % (arch))
+        log.debug('dehao: suite_name : %s' % (suite_name))
+        log.debug('dehao: suite_path : %s' % (suite_path))
         log.debug('Suite %s in %s' % (suite_name, suite_path))
+
         configs = [
             (combine_path(suite_name, item[0]), item[1]) for item in
             build_matrix(suite_path, subset=self.args.subset, seed=self.args.seed)
@@ -551,6 +575,7 @@ class Run(object):
 
         count = len(jobs_to_schedule)
         missing_count = len(jobs_missing_packages)
+        ## dehao 
         log.info(
             'Suite %s in %s scheduled %d jobs.' %
             (suite_name, suite_path, count)

@@ -78,6 +78,8 @@ def install_packages(ctx, pkgs, config):
     with parallel() as p:
         for remote in ctx.cluster.remotes.keys():
             system_type = teuthology.get_system_type(remote)
+            log.info("dehao ===>>> system_type is [%s] ", system_type)
+            log.info("dehao ===>>> try to execute [%s] ", install_pkgs[system_type])
             p.spawn(
                 install_pkgs[system_type],
                 ctx, remote, pkgs[system_type], config)
@@ -129,6 +131,8 @@ def remove_sources(ctx, config):
 def get_package_list(ctx, config):
     debug = config.get('debuginfo', False)
     project = config.get('project', 'ceph')
+
+    log.info("dehao ===>>> check if yaml_path is exists...")
     yaml_path = None
     # Look for <suite_path>/packages/packages.yaml
     if hasattr(ctx, 'config') and 'suite_path' in ctx.config:
@@ -139,12 +143,15 @@ def get_package_list(ctx, config):
         )
         if os.path.exists(suite_packages_path):
             yaml_path = suite_packages_path
+            log.info("dehao ===>>> yaml_path is exists...")
     # If packages.yaml isn't found in the suite_path, potentially use
     # teuthology's
     yaml_path = yaml_path or os.path.join(
         os.path.dirname(__file__),
         'packages.yaml',
     )
+    log.info("dehao ===>>> yaml_path is [%s]", yaml_path)
+
     default_packages = yaml.safe_load(open(yaml_path))
     default_debs = default_packages.get(project, dict()).get('deb', [])
     default_rpms = default_packages.get(project, dict()).get('rpm', [])
@@ -175,6 +182,7 @@ def get_package_list(ctx, config):
     return package_list
 
 
+### step 1 ####
 @contextlib.contextmanager
 def install(ctx, config):
     """
@@ -184,14 +192,28 @@ def install(ctx, config):
     :param ctx: the argparse.Namespace object
     :param config: the config dict
     """
+    print(">>>>>>>>>>>>>>>>>>>>>>>>")
+    print("the parameter of install function is as following : ")
+    for kv in config.items():
+        print kv
+    print("<<<<<<<<<<<<<<<<<<<<<<<<")
 
+    log.info("dehao ===>>> get package list")
     package_list = get_package_list(ctx, config)
     debs = package_list['deb']
     rpms = package_list['rpm']
 
+    log.info("dehao ===>>> deb list as following : ")
+    for kv in debs:
+        print kv
+    log.info("dehao ===>>> rpm list as following : ")
+    for kv in rpms:
+        print kv
+
     # pull any additional packages out of config
     extra_pkgs = config.get('extra_packages', [])
     log.info('extra packages: {packages}'.format(packages=extra_pkgs))
+
     if isinstance(extra_pkgs, dict):
         debs += extra_pkgs.get('deb', [])
         rpms += extra_pkgs.get('rpm', [])
@@ -206,12 +228,11 @@ def install(ctx, config):
     # install these. 'extras' might not be the best name for this.
     extras = config.get('extras')
     if extras is not None:
-        debs = ['ceph-test', 'ceph-fuse',
-                'librados2', 'librbd1',
-                'python-ceph']
+        debs = ['ceph-test', 'ceph-fuse', 'librados2', 'librbd1', 'python-ceph']
         rpms = ['ceph-fuse', 'librbd1', 'librados2', 'ceph-test', 'python-ceph']
     package_list = dict(deb=debs, rpm=rpms)
-    install_packages(ctx, package_list, config)
+
+    install_packages(ctx, package_list, config) ### <<<<<======
     try:
         yield
     finally:
@@ -532,6 +553,8 @@ def task(ctx, config):
     :param ctx: the argparse.Namespace object
     :param config: the config dict
     """
+    log.info("\ndehao ===>>> install task begin")
+
     if config is None:
         config = {}
     assert isinstance(config, dict), \
@@ -540,6 +563,7 @@ def task(ctx, config):
     project, = config.get('project', 'ceph'),
     log.debug('project %s' % project)
     overrides = ctx.config.get('overrides')
+    repos = None
     if overrides:
         install_overrides = overrides.get('install', {})
         teuthology.deep_merge(config, install_overrides.get(project, {}))
@@ -591,7 +615,7 @@ def task(ctx, config):
         if repos:
             nested_config['repos'] = repos
         with contextutil.nested(
-            lambda: install(ctx=ctx, config=nested_config),
+            lambda: install(ctx=ctx, config=nested_config), ### <<<======
             lambda: ship_utilities(ctx=ctx, config=None),
         ):
             yield
