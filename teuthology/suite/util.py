@@ -139,7 +139,7 @@ def get_distro_defaults(distro, machine_type):
             os_version = '13.10'
             arch = 'armv7l'
         else:
-            os_version = '14.04'
+            os_version = '18.04' ############### modified by dehao !!!!!!!!!!
     elif distro == 'debian':
         os_type = distro
         os_version = '7'
@@ -443,6 +443,7 @@ def teuthology_schedule(args, verbose, dry_run, log_prefix=''):
             ' '.join(printable_args),
         ))
     if not dry_run or (dry_run and verbose > 1):
+        log.info("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
         subprocess.check_call(args=args)
 
 

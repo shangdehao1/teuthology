@@ -2,12 +2,13 @@
 # by generating combinations of facets found in
 # https://github.com/ceph/ceph-qa-suite.git
 
+import sys
+import pprint
 import logging
 import os
 import random
 import time
-from distutils.util import strtobool
-
+from distutils.util import strtobool 
 import teuthology
 from teuthology.config import config, YamlConfig
 from teuthology.report import ResultsReporter
@@ -108,6 +109,9 @@ def expand_short_repo_name(name, orig):
     return name
 
 def main(args):
+
+    log.info("\n\ndehao ===>>> teuthology-suite\n\n")
+
     conf = process_args(args)
     if conf.verbose:
         teuthology.log.setLevel(logging.DEBUG)
@@ -135,16 +139,20 @@ def main(args):
         conf.filter_in.extend(rerun_filters['descriptions'])
         conf.suite = normalize_suite_name(rerun_filters['suite'])
         conf.subset, conf.seed = get_rerun_conf(conf)
+
     if conf.seed < 0:
         conf.seed = random.randint(0, 9999)
         log.info('Using random seed=%s', conf.seed)
 
-    run = Run(conf) ## 
+    log.info("================================")
+    pprint.pprint(conf)
+    log.info("================================")
+
+    run = Run(conf) ##  <<<====
     name = run.name
-    run.prepare_and_schedule() ##
+    run.prepare_and_schedule() ## <<<====
     if not conf.dry_run and conf.wait:
-        return wait(name, config.max_job_time,
-                    conf.archive_upload_url)
+        return wait(name, config.max_job_time, conf.archive_upload_url)
 
 
 def get_rerun_filters(name, statuses):

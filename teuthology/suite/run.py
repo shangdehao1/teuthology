@@ -5,6 +5,8 @@ import pwd
 import re
 import time
 import yaml
+import pprint
+import sys
 
 from datetime import datetime
 from tempfile import NamedTemporaryFile
@@ -38,31 +40,41 @@ class Run(object):
         self.args = args
         self.name = self.make_run_name()
 
-        print('shangdehao : check if need to fetch ceph repo. ceph_rep is ', self.args.ceph_repo)
         if self.args.ceph_repo:
             config.ceph_git_url = self.args.ceph_repo
-	    print('shangdehao : ceph_git_url is ', config.ceph_git_url)
         if self.args.suite_repo:
             config.ceph_qa_suite_git_url = self.args.suite_repo
-	    print('shangdehao : ceph_qa_suite_git_url is ', config.ceph_qa_suite_git_url)
 
         self.base_config = self.create_initial_config() ## <<<====
+
+        log.info("===================================")
+        log.info("dehao ===>>> base config is as following : ")
+        pprint.pprint(self.base_config)
+        log.info("===================================")
+	############################################
+
         # caches package versions to minimize requests to gbs
         self.package_versions = dict()
 
-        print('shangdehao : check if need to fetch ceph qa. suite_dir is ', self.args.suite_dir)
+        log.info("dehao ===>>> check if need to fetch ceph qa...")
         if self.args.suite_dir:
-	    print('shangdehao : no')
+            log.info("dehao ===>>> no....due to suite_dir = [%s], do not need to pull qa source code from web...", self.args.suite_dir)
             self.suite_repo_path = self.args.suite_dir
         else:
-	    print('shangdehao : yes')
-            self.suite_repo_path = util.fetch_repos(
-                self.base_config.suite_branch, test_name=self.name)
+            log.info("dehao ===>>> yes....due to suite_dir = [None], need to pull qa source code from web...")
+            log.info("DEHAO ERROR ===>>> forbid to download source code from web side....")
+
+            # self.suite_repo_path = util.fetch_repos(
+            #    self.base_config.suite_branch, test_name=self.name)
 
         # Interpret any relative paths as being relative to ceph-qa-suite
         # (absolute paths are unchanged by this)
         self.base_yaml_paths = [os.path.join(self.suite_repo_path, b) for b in
                                 self.args.base_yaml_paths]
+        log.info("===================================")
+        log.info("dehao ===>>> base_yaml_paths is as following : ")
+        pprint.pprint(self.base_yaml_paths)
+        log.info("===================================")
 
     def make_run_name(self):
         """
@@ -91,13 +103,22 @@ class Run(object):
 
         :returns: A JobConfig object
         """
+        log.info("dehao ===>>> kernel")
         self.kernel_dict = self.choose_kernel()
+        log.info("dehao ===>>> ceph hash....")
         ceph_hash = self.choose_ceph_hash()
         # We don't store ceph_version because we don't use it yet outside of
         # logging.
+        log.info("dehao ===>>> ceph version...")
         self.choose_ceph_version(ceph_hash)
+
+        log.info("dehao ===>>> teuthology branch...")
         teuthology_branch = self.choose_teuthology_branch()
+
+        log.info("dehao ===>>> suite branch ....")
         suite_branch = self.choose_suite_branch()
+
+        log.info("dehao ===>>> suite hash...")
         suite_hash = self.choose_suite_hash(suite_branch)
 
         if self.args.distro_version:
@@ -119,11 +140,6 @@ class Run(object):
             suite_repo=config.get_ceph_qa_suite_git_url(),
             suite_relpath=self.args.suite_relpath,
         )
-	
-        log.info("dehao ====> distro : %s", self.args.distro)
-        log.info("dehao ====> distro : %s", self.config_input.get('distro'))
-        log.info("dehao ====> distro_version : %s", self.args.distro_version)
-        log.info("dehao ====> distro_version : %s", self.config_input.get('distro_version'))
 	
         return self.build_base_config()
 
@@ -173,7 +189,8 @@ class Run(object):
                     '%s.git' % repo_name
                 )
                 util.schedule_fail(message=str(exc), name=self.name)
-            log.info("ceph sha1 explicitly supplied")
+            #log.info("ceph sha1 explicitly supplied")
+            log.info("dehao ===>>> ceph sha1 explicitly supplied")
 
         elif self.args.ceph_branch:
             ceph_hash = util.git_ls_remote(repo_name, self.args.ceph_branch)
@@ -184,7 +201,8 @@ class Run(object):
                 )
                 util.schedule_fail(message=str(exc), name=self.name)
 
-        log.info("ceph sha1: {hash}".format(hash=ceph_hash))
+        #log.info("ceph sha1: {hash}".format(hash=ceph_hash))
+        log.info("dehao ===>>> ceph sha1 = [{hash}]".format(hash=ceph_hash))
         return ceph_hash
 
     def choose_ceph_version(self, ceph_hash):
@@ -360,7 +378,7 @@ class Run(object):
         num_jobs = self.schedule_suite() ## <<==
 
         if num_jobs:
-            self.write_result()
+            self.write_result() ## <<<====
 
     def collect_jobs(self, arch, configs, newest=False):
         jobs_to_schedule = []
@@ -464,13 +482,9 @@ class Run(object):
         return jobs_missing_packages, jobs_to_schedule
 
     def schedule_jobs(self, jobs_missing_packages, jobs_to_schedule, name):
-        index = 0
         for job in jobs_to_schedule:
-            log.info('dehao ===>>> begin to schedule job %d in this run', index)
-	    index = index + 1
-            log.info(
-                'Scheduling %s', job['desc']
-            )
+            #log.info('Scheduling %s', job['desc'])
+            log.info('dehao ===>>> scheduling job = [%s]', job['desc'])
 
             log_prefix = ''
             if job in jobs_missing_packages:
@@ -484,6 +498,7 @@ class Run(object):
                         "hash {sha1}.".format(sha1=self.base_config.sha1),
                         name,
                     )
+	    #######################
             util.teuthology_schedule(
                 args=job['args'],
                 dry_run=self.args.dry_run,
@@ -508,21 +523,26 @@ class Run(object):
             'suites',
             self.base_config.suite.replace(':', '/'),
         ))
-        log.debug('dehao: name : %s' % (name))
-        log.debug('dehao: arch : %s' % (arch))
-        log.debug('dehao: suite_name : %s' % (suite_name))
-        log.debug('dehao: suite_path : %s' % (suite_path))
-        log.debug('Suite %s in %s' % (suite_name, suite_path))
+        log.debug('dehao ===>>> running job name is [%s]' % (name))
+        log.debug('dehao ===>>> arch is [%s]' % (arch))
+        log.debug('dehao ===>>> suite_name is [%s]' % (suite_name))
+        log.debug('dehao ===>>> suite_path is [%s]' % (suite_path))
 
         configs = [
             (combine_path(suite_name, item[0]), item[1]) for item in
             build_matrix(suite_path, subset=self.args.subset, seed=self.args.seed)
         ]
-        log.info('Suite %s in %s generated %d jobs (not yet filtered)' % (
+        #log.info('Suite %s in %s generated %d jobs (not yet filtered)' % (
+        #    suite_name, suite_path, len(configs)))
+        log.info('dehao ===>>> Suite [%s] in [%s] generated [%d] jobs (not yet filtered)' % (
             suite_name, suite_path, len(configs)))
 
         if self.args.dry_run:
             log.debug("Base job config:\n%s" % self.base_config)
+
+        #log.info("=========================")
+        # pprint.pprint(configs)
+        #log.info("=========================")
 
         # create, but do not write, the temp file here, so it can be
         # added to the args in collect_jobs, but not filled until
@@ -538,7 +558,7 @@ class Run(object):
         limit = self.args.newest
         while backtrack <= limit:
             jobs_missing_packages, jobs_to_schedule = \
-                self.collect_jobs(arch, configs, self.args.newest)
+                self.collect_jobs(arch, configs, self.args.newest) ### <<<======
             if jobs_missing_packages and self.args.newest:
                 new_sha1 = \
                     util.find_git_parent('ceph', self.base_config.sha1)
@@ -566,10 +586,13 @@ class Run(object):
         with open(base_yaml_path, 'w+b') as base_yaml:
             base_yaml.write(str(self.base_config))
 
+        log.info("dehao ===>>> base yaml path is [%s]", base_yaml_path)
+
+
         if jobs_to_schedule:
             self.write_rerun_memo()
 
-        self.schedule_jobs(jobs_missing_packages, jobs_to_schedule, name)
+        self.schedule_jobs(jobs_missing_packages, jobs_to_schedule, name) ### <<<===
 
         os.remove(base_yaml_path)
 

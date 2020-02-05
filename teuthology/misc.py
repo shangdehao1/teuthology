@@ -866,9 +866,11 @@ def wait_until_healthy(ctx, remote, ceph_cluster='ceph', use_sudo=False):
     with safe_while(tries=(900 / 6), action="wait_until_healthy") as proceed:
         while proceed():
             out = remote.sh(args, logger=log.getChild('health'))
-            log.debug('Ceph health: %s', out.rstrip('\n'))
+            # log.debug('Ceph health: %s', out.rstrip('\n'))
+            log.info('dehao ===>>> Ceph health: %s', out.rstrip('\n'))
             if out.split(None, 1)[0] == 'HEALTH_OK':
                 break
+            log.info("dehao ===>>> continue to wait for HEALTH_OK....")
             time.sleep(1)
 
 
@@ -896,6 +898,7 @@ def wait_until_osds_up(ctx, cluster, remote, ceph_cluster='ceph'):
             up = len(filter(lambda o: 'up' in o['state'], j['osds']))
             log.debug('%d of %d OSDs are up' % (up, num_osds))
             if up == num_osds:
+                log.info("dehao ===>>> all osds up....")
                 break
 
 

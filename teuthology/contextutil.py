@@ -24,16 +24,37 @@ def nested(*managers):
     exits = []
     vars = []
     exc = (None, None, None)
+
+    if managers[-1].__name__ == "watch_setup(ctx=ctx, config=config)":
+        dehao_tag = 1
+    elif managers[-1].__name__ == "run_qemu(ctx=ctx, config=config)":
+        dehao_tag = 2 
+    else:
+        dehao_tag = 0
+
     try:
         for mgr_fn in managers:
+            if dehao_tag == 1:
+                log.info("dehao ===>>> begin to run subtask of [task=ceph] : %s", mgr_fn.__name__)
+            if dehao_tag == 2:
+                log.info("dehao ===>>> begin to run subtask of [task=qemu] : %s", mgr_fn.__name__)
             mgr = mgr_fn()
             exit = mgr.__exit__
             enter = mgr.__enter__
             vars.append(enter())
             exits.append(exit)
+            if dehao_tag == 1:
+                log.info("dehao ===>>> finish to run subtask of [task=ceph] : %s\n\n", mgr_fn.__name__)
+            if dehao_tag == 2:
+                log.info("dehao ===>>> finish to run subtask of [task=qemu] : %s\n\n", mgr_fn.__name__)
+        if dehao_tag == 1:
+            log.info("dehao ===>>> All subtasks of ceph have been finished...")
+        if dehao_tag == 2:
+            log.info("dehao ===>>> all subtasks of qemu have been finished...")
         yield vars
     except Exception:
-        log.exception('Saw exception from nested tasks')
+        #log.exception('Saw exception from nested tasks')
+        log.info("dehao ===>>> saw exception from executing nested tasks...")
         exc = sys.exc_info()
         # FIXME this needs to be more generic
         if config.ctx and config.ctx.config.get('interactive-on-error'):
@@ -42,6 +63,7 @@ def nested(*managers):
             log.warning('Saw failure, going into interactive mode...')
             interactive.task(ctx=config.ctx, config=None)
     finally:
+        log.info("dehao ===>>> begin to do finally-sentence works in contextutil module...")
         while exits:
             exit = exits.pop()
             try:
@@ -54,6 +76,7 @@ def nested(*managers):
             # the right information. Another exception may
             # have been raised and caught by an exit method
             reraise(*exc)
+        log.info("dehao ===>>> finish to do finally-sentence works in contextutil module...")
 
 
 class safe_while(object):

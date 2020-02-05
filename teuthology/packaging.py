@@ -454,8 +454,10 @@ class GitbuilderProject(object):
         self.remote = remote
 
         if remote and ctx:
+            log.info("dehao ===>>> init GitbuilderProject using remote hosts")
             self._init_from_remote()
         else:
+            log.info("dehao ===>>> init GitbuilderProject using job config")
             self._init_from_config()
 
         self.dist_release = self._get_dist_release()
@@ -539,6 +541,7 @@ class GitbuilderProject(object):
         """
         if not hasattr(self, '_version'):
             self._version = self._get_package_version()
+            log.info("dehao ===>>> generate package version...%s", self._version)
         return self._version
 
     @property
@@ -708,6 +711,7 @@ class GitbuilderProject(object):
             return dict(tag=tag)
         elif branch:
             warn('branch')
+            log.info("dehao ===>>> the version of package in remote node : brach is %s", branch)
             return dict(branch=branch)
         elif sha1:
             warn('sha1')
@@ -715,6 +719,7 @@ class GitbuilderProject(object):
         else:
             log.warning("defaulting to master branch")
             return dict(branch='master')
+            # return dict(branch='nautilus')
 
     def _get_base_url(self):
         """
@@ -737,7 +742,7 @@ class GitbuilderProject(object):
         """
         Look for, and parse, a file called 'version' in base_url.
         """
-        url = "{0}/version".format(self.base_url)
+        url = "{0}/version".format(self.base_url) ## <<===
         log.info("Looking for package version: {0}".format(url))
         # will loop and retry until a 200 is returned or the retry
         # limits are reached
@@ -855,17 +860,21 @@ class ShamanProject(GitbuilderProject):
 
     def _get_base_url(self):
         self.assert_result()
+	# the RUL field of the first item of the web....sdh
+	log.info("dehao ===>>> we get the first item = [%s]", self._result.json()[0]['url'])
         return self._result.json()[0]['url']
 
     @property
     def _result(self):
         if getattr(self, '_result_obj', None) is None:
-            self._result_obj = self._search()
+            self._result_obj = self._search() ## <<===
         return self._result_obj
 
     def _search(self):
-        uri = self._search_uri
-        log.debug("Querying %s", uri)
+        uri = self._search_uri ## <<<====
+        # log.debug("Querying %s", uri)
+        log.info("dehao ===>>> get all content from URL=[%s]", uri)
+        ## the content of resp come from web...sdh
         resp = requests.get(
             uri,
             headers={'content-type': 'application/json'},
@@ -885,16 +894,19 @@ class ShamanProject(GitbuilderProject):
         req_obj['distros'] = '%s/%s' % (self.distro, self.arch)
         ref_name, ref_val = self._choose_reference().items()[0]
         if ref_name == 'tag':
-            req_obj['sha1'] = self._sha1 = self._tag_to_sha1()
+            req_obj['sha1'] = self._sha1 = self._tag_to_sha1() ## <<<====
         elif ref_name == 'sha1':
-            req_obj['sha1'] = ref_val
+            req_obj['sha1'] = ref_val ### <<<====
         else:
-            req_obj['ref'] = ref_val
+            req_obj['ref'] = ref_val ### <<<===
         req_str = urlencode(req_obj)
         uri = urljoin(
             self.query_url,
             'search',
         ) + '?%s' % req_str
+	log.info("dehao ===>>> query_url = [%s]", self.query_url)
+	log.info("dehao ===>>> reqest is = [%s]", req_str)
+        log.info("dehao ===>>> URL = [%s]", uri)
         return uri
 
     def _tag_to_sha1(self):
@@ -987,6 +999,7 @@ class ShamanProject(GitbuilderProject):
     def _install_deb_repo(self):
 	log.info("dehao ===>>> install deb repo in child class - ShamanProject")
         repo = self._get_repo()
+        log.info("dehao ===>>> write repo to /etc/apt/sources.list.d/ceph.list")
         sudo_write_file(
             self.remote,
             '/etc/apt/sources.list.d/{proj}.list'.format(

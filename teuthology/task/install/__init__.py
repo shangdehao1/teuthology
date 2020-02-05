@@ -75,15 +75,17 @@ def install_packages(ctx, pkgs, config):
         "deb": deb._update_package_list_and_install,
         "rpm": rpm._update_package_list_and_install,
     }
+    log.info("dehao ===>>> All things is ready, running install on remote machine...")
     with parallel() as p:
         for remote in ctx.cluster.remotes.keys():
             system_type = teuthology.get_system_type(remote)
             log.info("dehao ===>>> system_type is [%s] ", system_type)
-            log.info("dehao ===>>> try to execute [%s] ", install_pkgs[system_type])
+            log.info("dehao ===>>> executing [%s] ", install_pkgs[system_type])
             p.spawn(
                 install_pkgs[system_type],
                 ctx, remote, pkgs[system_type], config)
 
+    log.info("dehao ===>>> All package have been installed, checking package version consistent...")
     for remote in ctx.cluster.remotes.keys():
         # verifies that the install worked as expected
         verify_package_version(ctx, config, remote)
@@ -132,25 +134,17 @@ def get_package_list(ctx, config):
     debug = config.get('debuginfo', False)
     project = config.get('project', 'ceph')
 
-    log.info("dehao ===>>> check if yaml_path is exists...")
+    log.info("dehao ===>>> check if packages.yaml file exists...")
     yaml_path = None
     # Look for <suite_path>/packages/packages.yaml
     if hasattr(ctx, 'config') and 'suite_path' in ctx.config:
-        suite_packages_path = os.path.join(
-            ctx.config['suite_path'],
-            'packages',
-            'packages.yaml',
-        )
+        suite_packages_path = os.path.join(ctx.config['suite_path'], 'packages', 'packages.yaml',)
         if os.path.exists(suite_packages_path):
             yaml_path = suite_packages_path
-            log.info("dehao ===>>> yaml_path is exists...")
     # If packages.yaml isn't found in the suite_path, potentially use
     # teuthology's
-    yaml_path = yaml_path or os.path.join(
-        os.path.dirname(__file__),
-        'packages.yaml',
-    )
-    log.info("dehao ===>>> yaml_path is [%s]", yaml_path)
+    yaml_path = yaml_path or os.path.join(os.path.dirname(__file__), 'packages.yaml',)
+    log.info("dehao ===>>> the packages.yaml file is [%s]", suite_packages_path)
 
     default_packages = yaml.safe_load(open(yaml_path))
     default_debs = default_packages.get(project, dict()).get('deb', [])
@@ -178,7 +172,8 @@ def get_package_list(ctx, config):
         rpms = exclude(rpms, excluded_packages)
 
     package_list = dict(deb=debs, rpm=rpms)
-    log.debug("Package list is: {}".format(package_list))
+    #log.debug("Package list is: {}".format(package_list))
+    log.info("dehao ===>>> Package list is: {}".format(package_list))
     return package_list
 
 
@@ -192,27 +187,22 @@ def install(ctx, config):
     :param ctx: the argparse.Namespace object
     :param config: the config dict
     """
-    print(">>>>>>>>>>>>>>>>>>>>>>>>")
-    print("the parameter of install function is as following : ")
-    for kv in config.items():
-        print kv
-    print("<<<<<<<<<<<<<<<<<<<<<<<<")
+    log.info(">>>>>>>>>>>>>>>>>>>>>>>>")
+    log.info("After preparation, the config of install task is as following : ")
+    log.info('\n%s', '\n  '.join(yaml.safe_dump(config, default_flow_style=False).splitlines()))
+    log.info("<<<<<<<<<<<<<<<<<<<<<<<<")
+    log.info(">>>>>>>>>>>>>>>>>>>>>>>>")
+    log.info('\n%s', '\n  '.join(yaml.safe_dump(str(ctx), default_flow_style=False).splitlines()))
+    log.info("<<<<<<<<<<<<<<<<<<<<<<<<")
+   
 
-    log.info("dehao ===>>> get package list")
-    package_list = get_package_list(ctx, config)
+    package_list = get_package_list(ctx, config) ## <<<===
     debs = package_list['deb']
     rpms = package_list['rpm']
 
-    log.info("dehao ===>>> deb list as following : ")
-    for kv in debs:
-        print kv
-    log.info("dehao ===>>> rpm list as following : ")
-    for kv in rpms:
-        print kv
-
     # pull any additional packages out of config
     extra_pkgs = config.get('extra_packages', [])
-    log.info('extra packages: {packages}'.format(packages=extra_pkgs))
+    # log.info('extra packages: {packages}'.format(packages=extra_pkgs))
 
     if isinstance(extra_pkgs, dict):
         debs += extra_pkgs.get('deb', [])
@@ -236,8 +226,8 @@ def install(ctx, config):
     try:
         yield
     finally:
-        remove_packages(ctx, config, package_list)
-        remove_sources(ctx, config)
+        remove_packages(ctx, config, package_list) ### <<<====
+        remove_sources(ctx, config) ### <<<====
 
 
 def upgrade_old_style(ctx, node, remote, pkgs, system_type):
@@ -553,7 +543,7 @@ def task(ctx, config):
     :param ctx: the argparse.Namespace object
     :param config: the config dict
     """
-    log.info("\ndehao ===>>> install task begin")
+    log.info("dehao ===>>> install task begin")
 
     if config is None:
         config = {}
@@ -561,7 +551,8 @@ def task(ctx, config):
         "task install only supports a dictionary for configuration"
 
     project, = config.get('project', 'ceph'),
-    log.debug('project %s' % project)
+    #log.debug('project %s' % project)
+    log.info('dehao ===>>> project name is [%s]' % project)
     overrides = ctx.config.get('overrides')
     repos = None
     if overrides:
@@ -569,7 +560,11 @@ def task(ctx, config):
         teuthology.deep_merge(config, install_overrides.get(project, {}))
         repos = install_overrides.get('repos', None)
         log.debug('INSTALL overrides: %s' % install_overrides)
-    log.debug('config %s' % config)
+
+    log.info("==============================")
+    log.info("the raw config of install task is as following : ")
+    log.info('\n%s', '\n  '.join(yaml.safe_dump(config, default_flow_style=False).splitlines()))
+    log.info("==============================")
 
     rhbuild = None
     if config.get('rhbuild'):

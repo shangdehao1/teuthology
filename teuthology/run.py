@@ -68,13 +68,15 @@ def fetch_tasks_if_needed(job_config):
     # in its config.
     suite_path = job_config.get('suite_path')
     if suite_path:
-        log.info("suite_path is set to %s; will attempt to use it", suite_path)
+        #log.info("suite_path is set to %s; will attempt to use it", suite_path)
+        log.info("dehao ===>>> suite_path is set to %s; will attempt to use it", suite_path)
         if suite_path not in sys.path:
             sys.path.insert(1, suite_path)
 
     try:
         import tasks
-        log.info("Found tasks at %s", os.path.dirname(tasks.__file__))
+        #log.info("Found tasks at %s", os.path.dirname(tasks.__file__))
+        log.info("dehao ===>>> found tasks at %s", os.path.dirname(tasks.__file__))
         # tasks found with the existing suite branch, return it
         return suite_path
     except ImportError:
@@ -251,7 +253,8 @@ def report_outcome(config, archive, summary, fake_ctx):
 
     if not passed and bool(config.get('nuke-on-error')):
         # only unlock if we locked them in the first place
-        nuke(fake_ctx, fake_ctx.lock)
+        #nuke(fake_ctx, fake_ctx.lock)
+        log.info("################################# forbid nuke any machine..............................")
 
     if archive is not None:
         with open(os.path.join(archive, 'summary.yaml'), 'w') as f:
@@ -315,17 +318,22 @@ def main(args):
 
     set_up_logging(verbose, archive)
 
+    log.info("\n\n\n\n enter run function....\n\n\n")
 
-    # print the command being ran
-    log.info('\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+    log.info('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
     log.info('running teuthology command as follwoing : ')
-    log.debug("Teuthology command: {0}".format(get_teuthology_command(args)))
+    log.info("Teuthology command: {0}".format(get_teuthology_command(args)))
     log.info('<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n')
 
     if owner is None:
         args["--owner"] = owner = get_user()
 
     config = setup_config(config)
+
+    log.info(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+    log.info("the raw config of teuthology command is as following : ")
+    log.info('\n  '.join(yaml.safe_dump(config, default_flow_style=False).splitlines()))
+    log.info("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
 
     if archive is not None and 'archive_path' not in config:
         config['archive_path'] = archive
@@ -340,9 +348,13 @@ def main(args):
         assert lock, \
             'the --block option is only supported with the --lock option'
 
-    log.info(
-        '\n  '.join(['Config:', ] + yaml.safe_dump(
-            config, default_flow_style=False).splitlines()))
+    #log.info(
+    #    '\n  '.join(['Config:', ] + yaml.safe_dump(
+    #        config, default_flow_style=False).splitlines()))
+    # log.info(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+    # log.info("the config of teuthology command is as following : ")
+    # log.info('\n  '.join(yaml.safe_dump(config, default_flow_style=False).splitlines()))
+    # log.info("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
 
     args["summary"] = get_summary(owner, description)
 
@@ -357,8 +369,13 @@ def main(args):
     # command-line arguments are provided
     if os_type:
         config["os_type"] = os_type
+    else:
+        log.info("DEHAO ERROR ===>>> Do not need to override os type...")
+
     if os_version:
         config["os_version"] = os_version
+    else:
+        log.info("DEHAO ERROR ===>>> Do not need to overrides os version...")
 
     config["tasks"] = validate_tasks(config)
 
@@ -389,6 +406,11 @@ def main(args):
     # '_' uniformly
     if fake_ctx.config.get('interactive-on-error'):
         teuthology.config.config.ctx = fake_ctx
+
+    log.info(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+    log.info("After preparation, the last config of teuthology command is as following : ")
+    log.info('\n  '.join(yaml.safe_dump(config, default_flow_style=False).splitlines()))
+    log.info("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
 
     try:
         run_tasks(tasks=config['tasks'], ctx=fake_ctx)
