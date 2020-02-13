@@ -55,7 +55,8 @@ def save_config(ctx, config):
     """
     Store the config in a yaml file
     """
-    log.info('Saving configuration')
+    # log.info('Saving configuration')
+    log.info('Saving configuration to %s', os.path.join(ctx.archive, 'config.yaml'))
     if ctx.archive is not None:
         with open(os.path.join(ctx.archive, 'config.yaml'), 'w') as f:
             yaml.safe_dump(ctx.config, f, default_flow_style=False)

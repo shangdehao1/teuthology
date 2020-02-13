@@ -29,6 +29,7 @@ def create_key(keytype, key):
     """
     Create an ssh-rsa or ssh-dss key.
     """
+    log.info('dehao ===>>> start to create key...')
     if keytype == 'ssh-rsa':
         return paramiko.rsakey.RSAKey(data=base64.decodestring(key.encode()))
     elif keytype == 'ssh-dss':
@@ -109,4 +110,5 @@ def connect(user_at_host, host_key=None, keep_alive=False, timeout=60,
                     log.exception(
                         "Error connecting to {host}".format(host=host))
     ssh.get_transport().set_keepalive(keep_alive)
+    log.info('dehao ===>>> connection success.....')
     return ssh

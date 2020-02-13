@@ -47,6 +47,7 @@ def stop():
 
 
 def load_config(ctx=None):
+    log.info("dehao ===>>> reload teuthology.yaml config file")
     teuth_config.load()
     if ctx is not None:
         if not os.path.isdir(ctx.archive_dir):
@@ -70,6 +71,12 @@ def main(ctx):
 
     install_except_hook()
 
+    log.info("===========================")
+    log.info("dehao ===>>> teuthology-worker daemon start based on the following config information : ")
+    log.info("dehao ===>>> %s", ctx)
+    log.info("===========================")
+
+
     load_config(ctx=ctx)
 
     set_config_attr(ctx)
@@ -78,17 +85,26 @@ def main(ctx):
     beanstalk.watch_tube(connection, ctx.tube)
     result_proc = None
 
+    log.info("===========================")
+    log.info("dehao ===>>> teuthology-worker config is as following : ")
+    for kv in teuth_config.items():
+        log.info("dehao ===>>> %s", kv)
+    log.info("===========================")
+
     if teuth_config.teuthology_path is None:
-        fetch_teuthology('master')
-    fetch_qa_suite('master')
+        log.info('dehao ===>>> teuthology_path is None, fetching teuthology source code from web....')
+        # fetch_teuthology('master')
+
+    log.info("dehao ===>>> fetching QA suite source code from web...")
+    log.info("DEHAO ERROR ===>>> we forbid to download QA SUITE from web...")
+    # fetch_qa_suite('master')
 
     keep_running = True
     while keep_running:
         # Check to see if we have a teuthology-results process hanging around
         # and if so, read its return code so that it can exit.
         if result_proc is not None and result_proc.poll() is not None:
-            log.debug("teuthology-results exited with code: %s",
-                      result_proc.returncode)
+            log.debug("teuthology-results exited with code: %s", result_proc.returncode)
             result_proc = None
 
         if sentinel(restart_file_path):
@@ -100,25 +116,37 @@ def main(ctx):
 
         job = connection.reserve(timeout=60)
         if job is None:
+	    log.info('dehao ===>>> dont find any job in queue')
             continue
+
+	log.info('\n\n\n============== detect new job ==================\n\n\n')
 
         # bury the job so it won't be re-run if it fails
         job.bury()
         job_id = job.jid
-        log.info('Reserved job %d', job_id)
-        log.info('Config is: %s', job.body)
+
         job_config = yaml.safe_load(job.body)
         job_config['job_id'] = str(job_id)
 
+        log.info('dehao ===>>> job id = [%d]', job_id)
+        log.info('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        log.info('the raw description is as following : ')
+        log.info('\n  '.join(yaml.safe_dump(job_config, default_flow_style=False).splitlines()))
+        log.info('<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n')
+
         if job_config.get('stop_worker'):
+	    log.info('dehao ===>>> this job will terminate worker process..')
             keep_running = False
 
         try:
+	    log.info('dehao ===>>> begin to prepare job[%d]...', job_id)
             job_config, teuth_bin_path = prep_job(
                 job_config,
                 log_file_path,
                 ctx.archive_dir,
             )
+
+	    log.info('dehao ===>>> begin to run this job[%d]....', job_id)
             run_job(
                 job_config,
                 teuth_bin_path,
@@ -140,19 +168,22 @@ def prep_job(job_config, log_file_path, archive_dir):
     job_id = job_config['job_id']
     safe_archive = safepath.munge(job_config['name'])
     job_config['worker_log'] = log_file_path
-    archive_path_full = os.path.join(
-        archive_dir, safe_archive, str(job_id))
+    archive_path_full = os.path.join(archive_dir, safe_archive, str(job_id))
     job_config['archive_path'] = archive_path_full
 
     # If the teuthology branch was not specified, default to master and
     # store that value.
-    teuthology_branch = job_config.get('teuthology_branch', 'master')
+    # teuthology_branch = job_config.get('teuthology_branch', 'master')
+    teuthology_branch = job_config.get('teuthology_branch', 'useless_branch')
     job_config['teuthology_branch'] = teuthology_branch
 
     try:
+	log.info('dehao ===>>> check if need to fetch teuthology source code from web...')
         if teuth_config.teuthology_path is not None:
+	    log.info('dehao ===>>> In teuthology.yaml file, teuthology_path is [%s]. Do not need to fetch teuthology code from web....', teuth_config.teuthology_path)
             teuth_path = teuth_config.teuthology_path
         else:
+	    log.info('dehao ===>>> In teuthology.yaml file, teuthology_path is None. Need to fetch teuthology code from web')
             teuth_path = fetch_teuthology(branch=teuthology_branch)
         # For the teuthology tasks, we look for suite_branch, and if we
         # don't get that, we look for branch, and fall back to 'master'.
@@ -160,8 +191,18 @@ def prep_job(job_config, log_file_path, archive_dir):
         ceph_branch = job_config.get('branch', 'master')
         suite_branch = job_config.get('suite_branch', ceph_branch)
         suite_repo = job_config.get('suite_repo')
+        log.info('dehao ===>>> check if need to checkout branch of teuthology')
         if suite_repo:
             teuth_config.ceph_qa_suite_git_url = suite_repo
+
+       job_config['suite_path'] = "/home/teuthworker/src/github.com_ceph_ceph_master/qa"
+       log.info('DEHAO ERROR ===>>> force to use fixed suite sources code, %s', job_config['suite_path'])
+
+        # job_config['suite_path'] = os.path.normpath(os.path.join(
+        #     fetch_qa_suite(suite_branch),
+        #     job_config.get('suite_relpath', ''),
+        # ))
+
         job_config['suite_path'] = os.path.normpath(os.path.join(
             fetch_qa_suite(suite_branch),
             job_config.get('suite_relpath', ''),
@@ -185,6 +226,17 @@ def prep_job(job_config, log_file_path, archive_dir):
     if not os.path.isdir(teuth_bin_path):
         raise RuntimeError("teuthology branch %s at %s not bootstrapped!" %
                            (teuthology_branch, teuth_bin_path))
+
+    log.info('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+    log.info('after preperation, the description of job is as following : ')
+    log.info('\n  '.join(yaml.safe_dump(job_config, default_flow_style=False).splitlines()))
+    log.info('<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<')
+    log.info('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+    log.info('teuth config is as following ')
+    for kv in teuth_config.items():
+       log.info(" - %s", kv)
+    log.info('<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n')
+
     return job_config, teuth_bin_path
 
 
@@ -220,9 +272,9 @@ def run_job(job_config, teuth_bin_path, archive_dir, verbose):
         log.info("teuthology-results PID: %s", result_proc.pid)
         return
 
-    log.info('Creating archive dir %s', job_config['archive_path'])
+    log.info('dehao ===>>> Creating archive dir[%s] for job[%s]', job_config['archive_path'], job_config["job_id"])
     safepath.makedirs('/', job_config['archive_path'])
-    log.info('Running job %s', job_config['job_id'])
+    #log.info('Running job %s', job_config['job_id'])
 
     suite_path = job_config['suite_path']
     arg = [
@@ -234,8 +286,7 @@ def run_job(job_config, teuth_bin_path, archive_dir, verbose):
     if 'config' in job_config:
         inner_config = job_config.pop('config')
         if not isinstance(inner_config, dict):
-            log.warn("run_job: job_config['config'] isn't a dict, it's a %s",
-                     str(type(inner_config)))
+            log.warn("run_job: job_config['config'] isn't a dict, it's a %s", str(type(inner_config)))
         else:
             job_config.update(inner_config)
 
@@ -253,8 +304,7 @@ def run_job(job_config, teuth_bin_path, archive_dir, verbose):
         arg.extend(['--description', job_config['description']])
     arg.append('--')
 
-    with tempfile.NamedTemporaryFile(prefix='teuthology-worker.',
-                                     suffix='.tmp', mode='w+t') as tmp:
+    with tempfile.NamedTemporaryFile(prefix='teuthology-worker.', suffix='.tmp', mode='w+t') as tmp:
         yaml.safe_dump(data=job_config, stream=tmp)
         tmp.flush()
         arg.append(tmp.name)
@@ -262,13 +312,19 @@ def run_job(job_config, teuth_bin_path, archive_dir, verbose):
         python_path = env.get('PYTHONPATH', '')
         python_path = ':'.join([suite_path, python_path]).strip(':')
         env['PYTHONPATH'] = python_path
-        log.debug("Running: %s" % ' '.join(arg))
-        p = subprocess.Popen(args=arg, env=env)
-        log.info("Job archive: %s", job_config['archive_path'])
-        log.info("Job PID: %s", str(p.pid))
+
+        #log.debug("Running: %s" % ' '.join(arg))
+        log.info('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        log.info("dehao ===>>> lanuch child process to execute the following commands : ")
+        log.info("%s" % ' '.join(arg))
+        log.info('<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n')
+        p = subprocess.Popen(args=arg, env=env) ## <<<===
+        log.info("dehao ===>>> Job archive: %s", job_config['archive_path'])
+        log.info("dehao ===>>> create child process to handle job, and Job PID = %s", str(p.pid))
 
         if teuth_config.results_server:
-            log.info("Running with watchdog")
+	    log.info("dehao ===>>> In teuthology.yaml file, teuth_config.results_server = [%s]", teuth_config.results_server)
+            log.info("dehao ===>>> Running with watchdog")
             try:
                 run_with_watchdog(p, job_config)
             except Exception:
@@ -307,14 +363,15 @@ def run_with_watchdog(process, job_config):
         run_time = datetime.utcnow() - job_start_time
         total_seconds = run_time.days * 60 * 60 * 24 + run_time.seconds
         if total_seconds > teuth_config.max_job_time:
-            log.warning("Job ran longer than {max}s. Killing...".format(
-                max=teuth_config.max_job_time))
-            kill_job(job_info['name'], job_info['job_id'],
-                     teuth_config.archive_base, job_config['owner'])
+            log.warning("Job ran longer than {max}s. Killing...".format(max=teuth_config.max_job_time))
+            kill_job(job_info['name'], job_info['job_id'], teuth_config.archive_base, job_config['owner'])
 
         # calling this without a status just updates the jobs updated time
         report.try_push_job_info(job_info)
         time.sleep(teuth_config.watchdog_interval)
+	log.info("dehao ===>>> check if child process still is running...")
+
+    log.info('dehao ===>>> child-process(pid=%s) for job(job_id=%s) is over....', str(process.pid), job_info['job_id'])
 
     # we no longer support testing theses old branches
     assert(job_config.get('teuthology_branch') not in ('argonaut', 'bobtail',

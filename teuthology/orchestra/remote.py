@@ -66,6 +66,7 @@ class Remote(object):
         if timeout:
             args['timeout'] = timeout
 
+        log.info("dehao ===>>> try to connect to host[%s]", args['user_at_host'])
         self.ssh = connection.connect(**args)
         return self.ssh
 

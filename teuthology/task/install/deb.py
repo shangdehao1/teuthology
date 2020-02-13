@@ -24,7 +24,10 @@ def _update_package_list_and_install(ctx, remote, debs, config):
     :param config: the config dict
     """
 
+    log.info("dehao ===>>> begin to execute _update_package_list_and_install....")
+
     # check for ceph release key
+    log.info("dehao ===>>> add ceph release key...")
     r = remote.run(
         args=[
             'sudo', 'apt-key', 'list', run.Raw('|'), 'grep', 'Ceph',
@@ -33,6 +36,7 @@ def _update_package_list_and_install(ctx, remote, debs, config):
         check_status=False,
     )
     if r.stdout.getvalue().find('Ceph automated package') == -1:
+	log.info("dehao ===>>> because ceph release key do not exits, need to add it.")
         # if it doesn't exist, add it
         remote.run(
             args=[
@@ -43,7 +47,11 @@ def _update_package_list_and_install(ctx, remote, debs, config):
             ],
             stdout=StringIO(),
         )
+    else:
+        log.info("dehao ===>>> because ceph release key exits, do not need to add it.")
 
+
+    log.info("dehao ===>>> construct builder...")
     builder = _get_builder_project(ctx, remote, config)
     log.info("Installing packages: {pkglist} on remote deb {arch}".format(
         pkglist=", ".join(debs), arch=builder.arch)
@@ -52,18 +60,25 @@ def _update_package_list_and_install(ctx, remote, debs, config):
     if system_pkglist:
         if isinstance(system_pkglist, dict):
             system_pkglist = system_pkglist.get('deb')
-        log.info("Installing system (non-project) packages: {pkglist} on remote deb {arch}".format(
+        log.info("dehao ===>>> Installing packages: {pkglist} on remote deb {arch}".format(
             pkglist=", ".join(system_pkglist), arch=builder.arch)
         )
     # get baseurl
-    log.info('Pulling from %s', builder.base_url)
+    log.info('dehao ===>>> generating package_base_url...')
+    base_url = builder.base_url
+    log.info('dehao ===>>> package_base_url = [%s]', base_url)
+
+    log.info("dehao ===>>> generating package version....")
 
     version = builder.version
-    log.info('Package version is %s', version)
+    log.info('dehao ===>>> Package version is [%s]', version)
 
-    builder.install_repo()
+    builder.install_repo() ### <<<===
 
+    log.info("dehao ===>>> after add ceph apt sources, executing apt-get update")
     remote.run(args=['sudo', 'apt-get', 'update'], check_status=False)
+
+    log.info("dehao ===>>> installing ceph package on all remote machines....")
     install_cmd = [
             'sudo', 'DEBIAN_FRONTEND=noninteractive', 'apt-get', '-y',
             '--force-yes',
@@ -83,6 +98,7 @@ def _update_package_list_and_install(ctx, remote, debs, config):
         for fyle in os.listdir(ldir):
             fname = "%s/%s" % (ldir, fyle)
             remote.run(args=['sudo', 'dpkg', '-i', fname],)
+    log.info("dehao ===>>> executing _update_package_list_and_install...ok")
 
 
 def _remove(ctx, config, remote, debs):

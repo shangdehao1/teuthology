@@ -454,8 +454,10 @@ class GitbuilderProject(object):
         self.remote = remote
 
         if remote and ctx:
+	    log.info("dehao ===>>> init GitbuilderProject using remote hosts")
             self._init_from_remote()
         else:
+	    log.info("dehao ===>>> init GitbuilderProject using job config")
             self._init_from_config()
 
         self.dist_release = self._get_dist_release()
@@ -539,6 +541,7 @@ class GitbuilderProject(object):
         """
         if not hasattr(self, '_version'):
             self._version = self._get_package_version()
+	    log.info("dehao ===>>> generate package version...%s", self._version)
         return self._version
 
     @property
@@ -714,7 +717,7 @@ class GitbuilderProject(object):
             return dict(sha1=sha1)
         else:
             log.warning("defaulting to master branch")
-            return dict(branch='master')
+            return dict(branch='master') ### <<<====
 
     def _get_base_url(self):
         """
@@ -777,8 +780,10 @@ class GitbuilderProject(object):
         if not self.remote:
             raise NoRemoteError()
         if self.remote.os.package_type == 'rpm':
+	    log.info("dehao ===>>> install rpm repo...")
             self._install_rpm_repo()
         elif self.remote.os.package_type == 'deb':
+            log.info("dehao ===>>> install deb repo...")
             self._install_deb_repo()
 
     def _install_rpm_repo(self):
@@ -803,6 +808,7 @@ class GitbuilderProject(object):
             self.remote.run(args=['sudo', 'yum', '-y', 'install', url])
 
     def _install_deb_repo(self):
+	log.info("dehao ===>>> _install deb repo in parent class ...GitbuilderProject...")
         self.remote.run(
             args=[
                 'echo', 'deb', self.base_url, self.codename, 'main',
@@ -852,6 +858,8 @@ class ShamanProject(GitbuilderProject):
 
     def _get_base_url(self):
         self.assert_result()
+        # the RUL field of the first item of the web....sdh
+        log.info("dehao ===>>> we get the first item = [%s]", self._result.json()[0]['url'])
         return self._result.json()[0]['url']
 
     @property
@@ -861,8 +869,10 @@ class ShamanProject(GitbuilderProject):
         return self._result_obj
 
     def _search(self):
-        uri = self._search_uri
-        log.debug("Querying %s", uri)
+        uri = self._search_uri ## <<<====
+        # log.debug("Querying %s", uri)
+        log.info("dehao ===>>> get all content from URL=[%s]", uri)
+        ## the content of resp come from web...sdh
         resp = requests.get(
             uri,
             headers={'content-type': 'application/json'},
@@ -882,16 +892,19 @@ class ShamanProject(GitbuilderProject):
         req_obj['distros'] = '%s/%s' % (self.distro, self.arch)
         ref_name, ref_val = list(self._choose_reference().items())[0]
         if ref_name == 'tag':
-            req_obj['sha1'] = self._sha1 = self._tag_to_sha1()
+            req_obj['sha1'] = self._sha1 = self._tag_to_sha1() ## <<<===
         elif ref_name == 'sha1':
-            req_obj['sha1'] = ref_val
+            req_obj['sha1'] = ref_val ## <<<===
         else:
-            req_obj['ref'] = ref_val
+            req_obj['ref'] = ref_val ## <<<===
         req_str = urlencode(req_obj)
         uri = urljoin(
             self.query_url,
             'search',
         ) + '?%s' % req_str
+	log.info("dehao ===>>> query_url = [%s]", self.query_url)
+        log.info("dehao ===>>> reqest is = [%s]", req_str)
+        log.info("dehao ===>>> URL = [%s]", uri)
         return uri
 
     def _tag_to_sha1(self):
@@ -968,6 +981,7 @@ class ShamanProject(GitbuilderProject):
         )
 
     def _get_repo(self):
+        log.info("dehao ===>>> repo_url is %s", str(self.repo_url))
         resp = requests.get(self.repo_url)
         resp.raise_for_status()
         return resp.text
@@ -981,7 +995,9 @@ class ShamanProject(GitbuilderProject):
         )
 
     def _install_deb_repo(self):
+	log.info("dehao ===>>> install deb repo in child class - ShamanProject")
         repo = self._get_repo()
+	log.info("dehao ===>>> write repo to /etc/apt/sources.list.d/ceph.list")
         sudo_write_file(
             self.remote,
             '/etc/apt/sources.list.d/{proj}.list'.format(
@@ -1006,7 +1022,9 @@ def get_builder_project():
     GitbuilderProject or ShamanProject (the class, not an instance).
     """
     if config.use_shaman is True:
+	log.info("dehao ===>>> builder is ShamanProject...")
         builder_class = ShamanProject
     else:
+	log.info("dehao ===>>> builder is GitbuilderProject...")
         builder_class = GitbuilderProject
     return builder_class

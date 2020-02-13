@@ -332,6 +332,7 @@ def fetch_repo(url, branch, bootstrap=None, lock=True):
             except MaxWhileTries:
                 shutil.rmtree(dest_path, ignore_errors=True)
                 raise
+    log.info("dehao ===>>> finished to fetch source code, and stored to [%s]", dest_path)
     return dest_path
 
 
@@ -372,8 +373,8 @@ def fetch_qa_suite(branch, lock=True):
     :param branch: The branch to fetch
     :returns:      The destination path
     """
-    return fetch_repo(config.get_ceph_qa_suite_git_url(),
-                      branch, lock=lock)
+    log.info("dehao ===>>> downloading QA SUITE from URL=[%s], branch=[%s]", config.get_ceph_qa_suite_git_url(), branch)
+    return fetch_repo(config.get_ceph_qa_suite_git_url(), branch, lock=lock)
 
 
 def fetch_teuthology(branch, lock=True):
@@ -384,6 +385,7 @@ def fetch_teuthology(branch, lock=True):
     :returns:      The destination path
     """
     url = config.ceph_git_base_url + 'teuthology.git'
+    log.info("dehao ===>>> downloading teuthology from URL=[%s], branch=[%s]", url, branch)
     return fetch_repo(url, branch, bootstrap_teuthology, lock)
 
 
