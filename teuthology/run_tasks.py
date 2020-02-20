@@ -2,6 +2,7 @@ import logging
 import os
 import sys
 import types
+import yaml
 
 from copy import deepcopy
 
@@ -100,7 +101,6 @@ def run_tasks(tasks, ctx):
             except (ValueError, AttributeError):
                 raise RuntimeError('Invalid task definition: %s' % taskdict)
             #log.info('Running task %s...', taskname)
-            printf "\n"
 	    log.info('dehao ===>>> running task %s...', taskname)
             timer.mark('%s enter' % taskname)
             manager = run_one_task(taskname, ctx=ctx, config=config)

@@ -195,18 +195,14 @@ def prep_job(job_config, log_file_path, archive_dir):
         if suite_repo:
             teuth_config.ceph_qa_suite_git_url = suite_repo
 
-       job_config['suite_path'] = "/home/teuthworker/src/github.com_ceph_ceph_master/qa"
-       log.info('DEHAO ERROR ===>>> force to use fixed suite sources code, %s', job_config['suite_path'])
+        job_config['suite_path'] = '/home/teuthworker/src/github.com_ceph_ceph_master/qa'
+        log.info('DEHAO ERROR ===>>> force to use fixed suite sources code, %s', job_config['suite_path'])
 
         # job_config['suite_path'] = os.path.normpath(os.path.join(
         #     fetch_qa_suite(suite_branch),
         #     job_config.get('suite_relpath', ''),
         # ))
 
-        job_config['suite_path'] = os.path.normpath(os.path.join(
-            fetch_qa_suite(suite_branch),
-            job_config.get('suite_relpath', ''),
-        ))
     except BranchNotFoundError as exc:
         log.exception("Branch not found; marking job as dead")
         report.try_push_job_info(
