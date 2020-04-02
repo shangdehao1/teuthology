@@ -20,22 +20,26 @@ UNFINISHED_STATUSES = ('queued', 'running', 'waiting')
 def main(args):
 
     log = logging.getLogger(__name__)
+
+    log.info("dehao ===>>> enter teuthology-result....")
+
     if args['--verbose']:
         teuthology.log.setLevel(logging.DEBUG)
 
     if not args['--dry-run']:
         log_path = os.path.join(args['--archive-dir'], 'results.log')
+	log.info("dehao ===>>> create log file = [%s]", log_path)
         teuthology.setup_log_file(log_path)
 
     try:
         if args['--seed']:
             note_rerun_params(args['--subset'], args['--seed'])
         else:
-            results(args['--archive-dir'], args['--name'], args['--email'],
-                    int(args['--timeout']), args['--dry-run'])
+            results(args['--archive-dir'], args['--name'], args['--email'], int(args['--timeout']), args['--dry-run'])
     except Exception:
         log.exception('error generating memo/results')
         raise
+    log.info("dehao ===>>>>>>>>>>>>>>>>>>>>> teuthology-result process over <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
 
 
 def note_rerun_params(subset, seed):
@@ -49,39 +53,45 @@ def results(archive_dir, name, email, timeout, dry_run):
     starttime = time.time()
 
     if timeout:
-        log.info('Waiting up to %d seconds for tests to finish...', timeout)
+        log.info('dehao ===>>> waiting up to %d seconds for tests to finish...', timeout)
 
     reporter = ResultsReporter()
     while timeout > 0:
         if time.time() - starttime > timeout:
-            log.warn('test(s) did not finish before timeout of %d seconds',
-                     timeout)
+            log.warn('test(s) did not finish before timeout of %d seconds', timeout)
             break
         jobs = reporter.get_jobs(name, fields=['job_id', 'status'])
-        unfinished_jobs = [job for job in jobs if job['status'] in
-                           UNFINISHED_STATUSES]
-        if not unfinished_jobs:
+        unfinished_jobs = [job for job in jobs if job['status'] in UNFINISHED_STATUSES]
+	# if just have two jobs left, namely first_suite_job and last_suite_job. so over...
+        #if not unfinished_jobs:
+	if len(unfinished_jobs) == 2:
             log.info('Tests finished! gathering results...')
             break
+	else:
+	    log.info("dehao ===>>> unfinished jobs is as blow: ")
+
         time.sleep(60)
+        for kv in unfinished_jobs:
+            log.info("dehao ===>>>  - unfinished job is [%s]", kv)
 
-    (subject, body) = build_email_body(name)
+    #(subject, body) = build_email_body(name)
 
-    try:
-        if email and dry_run:
-            print("From: %s" % (config.results_sending_email or 'teuthology'))
-            print("To: %s" % email)
-            print("Subject: %s" % subject)
-            print(body)
-        elif email:
-            email_results(
-                subject=subject,
-                from_=(config.results_sending_email or 'teuthology'),
-                to=email,
-                body=body,
-            )
-    finally:
-        generate_coverage(archive_dir, name)
+    #try:
+    #    if email and dry_run:
+    #        print("From: %s" % (config.results_sending_email or 'teuthology'))
+    #        print("To: %s" % email)
+    #        print("Subject: %s" % subject)
+    #        print(body)
+    #    elif email:
+    #        email_results(
+    #            subject=subject,
+    #            from_=(config.results_sending_email or 'teuthology'),
+    #            to=email,
+    #            body=body,
+    #        )
+    #finally:
+    #    generate_coverage(archive_dir, name)
+    generate_coverage(archive_dir, name)
 
 
 def generate_coverage(archive_dir, name):

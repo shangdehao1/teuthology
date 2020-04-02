@@ -23,6 +23,7 @@ def init_logging():
     log = logging.getLogger(__name__)
     return log
 
+log = init_logging()
 
 def main(args):
     run = args['--run']
@@ -40,8 +41,8 @@ def main(args):
     save = not args['--no-save']
 
     log = init_logging()
-    reporter = ResultsReporter(archive_base, save=save, refresh=refresh,
-                               log=log)
+    reporter = ResultsReporter(archive_base, save=save, refresh=refresh, log=log)
+
     if dead and not job:
         for run_name in run:
             try_mark_run_dead(run[0])
@@ -362,6 +363,7 @@ class ResultsReporter(object):
             if 'job_id' not in fields:
                 fields.append('job_id')
             uri += "?fields=" + ','.join(fields)
+	log.info("dehao ===>>> requets for url = [%s]", uri)
         response = self.session.get(uri)
         response.raise_for_status()
         return response.json()
@@ -494,12 +496,11 @@ def try_push_job_info(job_config, extra_info=None):
         job_info = job_config
 
     try:
-        log.debug("Pushing job info to %s", config.results_server)
+        # log.info("dehao ===>>> pushing job info to [%s]. job's id is [%s]", config.results_server, job_id)
         push_job_info(run_name, job_id, job_info)
         return
     except report_exceptions:
-        log.exception("Could not report results to %s",
-                      config.results_server)
+        log.exception("Could not report results to %s", config.results_server)
 
 
 def try_delete_jobs(run_name, job_ids, delete_empty_run=True):
@@ -512,6 +513,7 @@ def try_delete_jobs(run_name, job_ids, delete_empty_run=True):
     :param delete_empty_run: If this would empty the run, delete it.
     """
     log = init_logging()
+    log.info("dehao ===>>> try delete job")
 
     if not isinstance(job_ids, list):
         if isinstance(job_ids, int):
@@ -520,23 +522,32 @@ def try_delete_jobs(run_name, job_ids, delete_empty_run=True):
             job_ids = [str(job_ids.decode())]
         else:
             job_ids = [job_ids]
+    log.info("dehao ===>>>   - run name is [%s]", run_name)
+    log.info("dehao ===>>>   - job id is [%s] ", str(job_ids))
 
     reporter = ResultsReporter()
     if not reporter.base_uri:
+	log.info("dehao ===>>>   - base uri is [None], so directly return...")
         return
+    else:
+	log.info("dehao ===>>>   - base uri is [%s]", reporter.base_uri)
 
-    log.debug("Deleting jobs from {server}: {jobs}".format(
-        server=config.results_server, jobs=str(job_ids)))
+    log.info("dehao ===>>>   - deleting jobs from server[{server}]: job id = [{jobs}].".format(server=config.results_server, jobs=str(job_ids)))
 
     if delete_empty_run:
         got_jobs = reporter.get_jobs(run_name, fields=['job_id'])
         got_job_ids = [j['job_id'] for j in got_jobs]
+	log.info("dehao ===>>>    - obtain jobs from server[%s] : got_job_id = [%s]", config.results_server, str(got_jobs))
+	log.info("dehao ===>>>    - check if job_id is equal to got_job_id...")
         if sorted(got_job_ids) == sorted(job_ids):
+	    log.info("dehao ===>>>    - yes")
             try:
                 reporter.delete_run(run_name)
                 return
             except report_exceptions:
                 log.exception("Run deletion failed")
+	else:
+	    log.info("dehao ===>>>    - no")
 
     def try_delete_job(job_id):
             try:
@@ -546,6 +557,7 @@ def try_delete_jobs(run_name, job_ids, delete_empty_run=True):
                 log.exception("Job deletion failed")
 
     for job_id in job_ids:
+	log.info("dehao ===>>>    - deleting job = [%s]", job_id)
         try_delete_job(job_id)
 
 

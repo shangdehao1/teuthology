@@ -7,6 +7,7 @@ import os
 import random
 import time
 from distutils.util import strtobool
+import sys
 
 import teuthology
 from teuthology.config import config, YamlConfig
@@ -108,18 +109,27 @@ def expand_short_repo_name(name, orig):
     return name
 
 def main(args):
+    log.info("\n\n dehao ===>>> teuthology-suite \n\n")
+
     conf = process_args(args)
+
+    # log.info("dehao ===>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+    # log.info("dehao ===>>> after process_args, the config is as following : ")
+    # for kv in conf.items():
+    #     log.info("dehao ===>>> %s", kv)
+    # log.info("dehao ===>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+    
     if conf.verbose:
         teuthology.log.setLevel(logging.DEBUG)
 
     if not conf.machine_type or conf.machine_type == 'None':
         schedule_fail("Must specify a machine_type")
     elif 'multi' in conf.machine_type:
-        schedule_fail("'multi' is not a valid machine_type. " +
-                      "Maybe you want 'plana,mira,burnupi' or similar")
+        schedule_fail("'multi' is not a valid machine_type. " + "Maybe you want 'plana,mira,burnupi' or similar")
 
     if conf.email:
         config.results_email = conf.email
+
     if conf.archive_upload:
         config.archive_upload = conf.archive_upload
         log.info('Will upload archives to ' + conf.archive_upload)
@@ -127,24 +137,27 @@ def main(args):
     if conf.rerun:
         rerun_filters = get_rerun_filters(conf.rerun, conf.rerun_statuses)
         if len(rerun_filters['descriptions']) == 0:
-            log.warn(
-                "No jobs matched the status filters: %s",
-                conf.rerun_statuses,
-            )
+            log.warn("No jobs matched the status filters: %s", conf.rerun_statuses,)
             return
         conf.filter_in.extend(rerun_filters['descriptions'])
         conf.suite = normalize_suite_name(rerun_filters['suite'])
         conf.subset, conf.seed = get_rerun_conf(conf)
+
     if conf.seed < 0:
         conf.seed = random.randint(0, 9999)
         log.info('Using random seed=%s', conf.seed)
+  
+    log.info("dehao ===>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+    log.info("dehao ===>>> after process_args, the config is as following : ")
+    for kv in conf.items():
+        log.info("dehao ===>>> %s", kv)
+    log.info("dehao ===>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
 
     run = Run(conf)
     name = run.name
     run.prepare_and_schedule()
     if not conf.dry_run and conf.wait:
-        return wait(name, config.max_job_time,
-                    conf.archive_upload_url)
+        return wait(name, config.max_job_time, conf.archive_upload_url)
 
 
 def get_rerun_filters(name, statuses):

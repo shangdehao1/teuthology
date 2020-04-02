@@ -64,7 +64,8 @@ def ls_remote(url, ref):
     result = subprocess.check_output(
         cmd, shell=True).split()
     sha1 = result[0] if result else None
-    log.debug("{} -> {}".format(cmd, sha1))
+    # log.debug("{} -> {}".format(cmd, sha1))
+    log.info("dehao ===>>> use [%s] to check sha1. result sha1 = [%s]", cmd, sha1)
     return sha1
 
 

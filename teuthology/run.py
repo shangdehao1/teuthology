@@ -251,8 +251,8 @@ def report_outcome(config, archive, summary, fake_ctx):
 
     if not passed and bool(config.get('nuke-on-error')):
         # only unlock if we locked them in the first place
-        #nuke(fake_ctx, fake_ctx.lock)
-	log.info("################################# forbid nuke any machine..............................")
+	log.info("################################# Nuke machines #############################")
+        # nuke(fake_ctx, fake_ctx.lock)
 
     if archive is not None:
         with open(os.path.join(archive, 'summary.yaml'), 'w') as f:
@@ -318,20 +318,20 @@ def main(args):
 
     log.info("\n\n\n\n enter run function....\n\n\n")
 
-    log.info('\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+    log.info('dehao ===>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
     log.info('running teuthology command as follwoing : ')
-    log.debug("Teuthology command: {0}".format(get_teuthology_command(args)))
-    log.info('<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n')
+    log.info("Teuthology command: {0}".format(get_teuthology_command(args)))
+    log.info('dehao ===>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n\n')
 
     if owner is None:
         args["--owner"] = owner = get_user()
 
     config = setup_config(config)
 
-    log.info(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+    log.info("dehao ===>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
     log.info("the raw config of teuthology command is as following : ")
     log.info('\n  '.join(yaml.safe_dump(config, default_flow_style=False).splitlines()))
-    log.info("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
+    log.info("dehao ===>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
 
     if archive is not None and 'archive_path' not in config:
         config['archive_path'] = archive
@@ -345,10 +345,6 @@ def main(args):
     if block:
         assert lock, \
             'the --block option is only supported with the --lock option'
-
-    #log.info(
-    #    '\n  '.join(['Config:', ] + yaml.safe_dump(
-    #        config, default_flow_style=False).splitlines()))
 
     #log.info(
     #    '\n  '.join(['Config:', ] + yaml.safe_dump(
@@ -421,3 +417,6 @@ def main(args):
     finally:
         # print to stdout the results and possibly send an email on any errors
         report_outcome(config, archive, fake_ctx.summary, fake_ctx)
+#	cmd = "/home/teuthworker/cleanup_slave_nodes.sh"
+#	os.system(cmd)
+

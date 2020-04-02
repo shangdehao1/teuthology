@@ -47,7 +47,7 @@ def stop():
 
 
 def load_config(ctx=None):
-    log.info("dehao ===>>> reload teuthology.yaml config file")
+    # log.info("dehao ===>>> reload teuthology.yaml config file")
     teuth_config.load()
     if ctx is not None:
         if not os.path.isdir(ctx.archive_dir):
@@ -60,6 +60,11 @@ def load_config(ctx=None):
 
 
 def main(ctx):
+    
+    ## dehao 
+    cmd = "/home/teuthworker/cleanup_slave_nodes.sh"
+    os.system(cmd)
+
     loglevel = logging.INFO
     if ctx.verbose:
         loglevel = logging.DEBUG
@@ -78,25 +83,25 @@ def main(ctx):
 
 
     load_config(ctx=ctx)
-
     set_config_attr(ctx)
 
     connection = beanstalk.connect()
     beanstalk.watch_tube(connection, ctx.tube)
     result_proc = None
 
-    log.info("===========================")
+    log.info("dehao ===>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
     log.info("dehao ===>>> teuthology-worker config is as following : ")
     for kv in teuth_config.items():
         log.info("dehao ===>>> %s", kv)
-    log.info("===========================")
+    log.info("dehao ===>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
 
     if teuth_config.teuthology_path is None:
-        log.info('dehao ===>>> teuthology_path is None, fetching teuthology source code from web....')
-        # fetch_teuthology('master')
+        log.info('dehao ===>>> teuthology_path is None, need to download teuthology source code form web....')
+        fetch_teuthology('master')
 
     log.info("dehao ===>>> fetching QA suite source code from web...")
     log.info("DEHAO ERROR ===>>> we forbid to download QA SUITE from web...")
+    # dehao : if we change hash id, we need first uncommend, then again commant this code..
     # fetch_qa_suite('master')
 
     keep_running = True
@@ -104,7 +109,7 @@ def main(ctx):
         # Check to see if we have a teuthology-results process hanging around
         # and if so, read its return code so that it can exit.
         if result_proc is not None and result_proc.poll() is not None:
-            log.debug("teuthology-results exited with code: %s", result_proc.returncode)
+            log.info("dehao ===>>> ########### teuthology-results exited with code: %s ############", result_proc.returncode)
             result_proc = None
 
         if sentinel(restart_file_path):
@@ -116,23 +121,23 @@ def main(ctx):
 
         job = connection.reserve(timeout=60)
         if job is None:
-	    log.info('dehao ===>>> dont find any job in queue')
+	    current_time = datetime.now().strftime('%Y-%m-%d:%H:%M:%S')
+	    log.info('dehao ===>>> teuthology-worker don\'t find any job from job queue on %s', current_time)
             continue
 
-	log.info('\n\n\n============== detect new job ==================\n\n\n')
 
         # bury the job so it won't be re-run if it fails
         job.bury()
         job_id = job.jid
+	log.info('\n\n\n============== detect new job, and JOB ID = [%s] ==================\n\n\n', job_id)
 
         job_config = yaml.safe_load(job.body)
         job_config['job_id'] = str(job_id)
 
-        log.info('dehao ===>>> job id = [%d]', job_id)
-        log.info('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
-        log.info('the raw description is as following : ')
+        log.info('dehao ===>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        log.info('the raw description of job_id[%d] is as following : ', job_id)
         log.info('\n  '.join(yaml.safe_dump(job_config, default_flow_style=False).splitlines()))
-        log.info('<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n')
+        log.info('dehao ===>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
 
         if job_config.get('stop_worker'):
 	    log.info('dehao ===>>> this job will terminate worker process..')
@@ -171,14 +176,15 @@ def prep_job(job_config, log_file_path, archive_dir):
     archive_path_full = os.path.join(archive_dir, safe_archive, str(job_id))
     job_config['archive_path'] = archive_path_full
 
-    # If the teuthology branch was not specified, default to master and
-    # store that value.
+    # If the teuthology branch was not specified, default to master and store that value.
+
+    # dehao : because i use my teuthology branch, i have specified teuthology path.
     # teuthology_branch = job_config.get('teuthology_branch', 'master')
-    teuthology_branch = job_config.get('teuthology_branch', 'useless_branch')
+    teuthology_branch = job_config.get('teuthology_branch', 'useless_branch') ## <<<===
     job_config['teuthology_branch'] = teuthology_branch
 
     try:
-	log.info('dehao ===>>> check if need to fetch teuthology source code from web...')
+	log.info('dehao ===>>> check if need to download teuthology source code from web...')
         if teuth_config.teuthology_path is not None:
 	    log.info('dehao ===>>> In teuthology.yaml file, teuthology_path is [%s]. Do not need to fetch teuthology code from web....', teuth_config.teuthology_path)
             teuth_path = teuth_config.teuthology_path
@@ -195,14 +201,15 @@ def prep_job(job_config, log_file_path, archive_dir):
         if suite_repo:
             teuth_config.ceph_qa_suite_git_url = suite_repo
 
-        job_config['suite_path'] = '/home/teuthworker/src/github.com_ceph_ceph_master/qa'
-        log.info('DEHAO ERROR ===>>> force to use fixed suite sources code, %s', job_config['suite_path'])
-
-        # job_config['suite_path'] = os.path.normpath(os.path.join(
-        #     fetch_qa_suite(suite_branch),
-        #     job_config.get('suite_relpath', ''),
-        # ))
-
+	#################################################################################################
+        job_config['suite_path'] = os.path.normpath(os.path.join(
+            #fetch_qa_suite(suite_branch), ### <<<======= 
+            "/home/teuthworker/src/github.com_ceph_ceph_master", ### <<<======= 
+            job_config.get('suite_relpath', ''),
+        ))
+	log.info("dehao ===>>> suite_relpath is [%s]", job_config.get('suite_relpath', ''))
+        log.info('DEHAO ERROR ===>>> ######## force to use fixed suite sources code, suite_path is [%s] ###################', job_config['suite_path'])
+	##################################################################################################
     except BranchNotFoundError as exc:
         log.exception("Branch not found; marking job as dead")
         report.try_push_job_info(
@@ -220,18 +227,17 @@ def prep_job(job_config, log_file_path, archive_dir):
 
     teuth_bin_path = os.path.join(teuth_path, 'virtualenv', 'bin')
     if not os.path.isdir(teuth_bin_path):
-        raise RuntimeError("teuthology branch %s at %s not bootstrapped!" %
-                           (teuthology_branch, teuth_bin_path))
+        raise RuntimeError("teuthology branch %s at %s not bootstrapped!" % (teuthology_branch, teuth_bin_path))
 
-    log.info('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+    log.info('dehao ===>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
     log.info('after preperation, the description of job is as following : ')
     log.info('\n  '.join(yaml.safe_dump(job_config, default_flow_style=False).splitlines()))
-    log.info('<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<')
-    log.info('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+    log.info('dehao ===>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n')
+    log.info('dehao ===>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
     log.info('teuth config is as following ')
     for kv in teuth_config.items():
        log.info(" - %s", kv)
-    log.info('<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n')
+    log.info('dehao ===>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n')
 
     return job_config, teuth_bin_path
 
@@ -239,9 +245,11 @@ def prep_job(job_config, log_file_path, archive_dir):
 def run_job(job_config, teuth_bin_path, archive_dir, verbose):
     safe_archive = safepath.munge(job_config['name'])
     if job_config.get('first_in_suite') or job_config.get('last_in_suite'):
-        if teuth_config.results_server:
-            report.try_delete_jobs(job_config['name'], job_config['job_id'])
+	########################## ERROR #####################################
+        #if teuth_config.results_server:
+        #    report.try_delete_jobs(job_config['name'], job_config['job_id'])
         suite_archive_dir = os.path.join(archive_dir, safe_archive)
+	log.info("dehao ===>>> create suite archive dir on [%s]", suite_archive_dir)
         safepath.makedirs('/', suite_archive_dir)
         args = [
             os.path.join(teuth_bin_path, 'teuthology-results'),
@@ -249,33 +257,35 @@ def run_job(job_config, teuth_bin_path, archive_dir, verbose):
             '--name', job_config['name'],
         ]
         if job_config.get('first_in_suite'):
-            log.info('Generating memo for %s', job_config['name'])
+	    log.info("dehao ===>>> this is the first_in_suite...")
+            log.info('dehao ===>>> Generating memo for %s', job_config['name'])
             if job_config.get('seed'):
                 args.extend(['--seed', job_config['seed']])
             if job_config.get('subset'):
                 args.extend(['--subset', job_config['subset']])
         else:
+	    log.info("dehao ===>>> this is the last_in_suite...")
             log.info('Generating results for %s', job_config['name'])
-            timeout = job_config.get('results_timeout',
-                                     teuth_config.results_timeout)
+            timeout = job_config.get('results_timeout', teuth_config.results_timeout)
             args.extend(['--timeout', str(timeout)])
             if job_config.get('email'):
                 args.extend(['--email', job_config['email']])
         # Execute teuthology-results, passing 'preexec_fn=os.setpgrp' to
         # make sure that it will continue to run if this worker process
         # dies (e.g. because of a restart)
+	log.info("dehao ===>>> execute command below : \n\n %s \n\n", args)
         result_proc = subprocess.Popen(args=args, preexec_fn=os.setpgrp)
         log.info("teuthology-results PID: %s", result_proc.pid)
         return
 
+    #log.info("dehao ===>>> in order to check teuthology-result, skip all job executation...")
+    #return
     log.info('dehao ===>>> Creating archive dir[%s] for job[%s]', job_config['archive_path'], job_config["job_id"])
     safepath.makedirs('/', job_config['archive_path'])
     #log.info('Running job %s', job_config['job_id'])
 
     suite_path = job_config['suite_path']
-    arg = [
-        os.path.join(teuth_bin_path, 'teuthology'),
-    ]
+    arg = [os.path.join(teuth_bin_path, 'teuthology'),]
     # The following is for compatibility with older schedulers, from before we
     # started merging the contents of job_config['config'] into job_config
     # itself.
@@ -331,14 +341,16 @@ def run_job(job_config, teuth_bin_path, archive_dir, verbose):
             # This sleep() is to give the child time to start up and create the
             # archive dir.
             time.sleep(5)
-            symlink_worker_log(job_config['worker_log'],
-                               job_config['archive_path'])
+            symlink_worker_log(job_config['worker_log'], job_config['archive_path'])
             p.wait()
 
         if p.returncode != 0:
             log.error('Child exited with code %d', p.returncode)
         else:
             log.info('Success!')
+
+        cmd = "/home/teuthworker/cleanup_slave_nodes.sh"
+        os.system(cmd)
 
 
 def run_with_watchdog(process, job_config):
@@ -365,19 +377,21 @@ def run_with_watchdog(process, job_config):
         # calling this without a status just updates the jobs updated time
         report.try_push_job_info(job_info)
         time.sleep(teuth_config.watchdog_interval)
-	log.info("dehao ===>>> check if child process still is running...")
+	log.info("dehao ===>>> a job still is running on the background...")
 
     log.info('dehao ===>>> child-process(pid=%s) for job(job_id=%s) is over....', str(process.pid), job_info['job_id'])
 
     # we no longer support testing theses old branches
-    assert(job_config.get('teuthology_branch') not in ('argonaut', 'bobtail',
-                                                       'cuttlefish', 'dumpling'))
+    assert(job_config.get('teuthology_branch') not in ('argonaut', 'bobtail', 'cuttlefish', 'dumpling'))
 
     # Let's make sure that paddles knows the job is finished. We don't know
     # the status, but if it was a pass or fail it will have already been
     # reported to paddles. In that case paddles ignores the 'dead' status.
     # If the job was killed, paddles will use the 'dead' status.
     report.try_push_job_info(job_info, dict(status='dead'))
+
+    # cmd = "/home/teuthworker/cleanup_slave_nodes.sh"
+    # os.system(cmd)
 
 
 def symlink_worker_log(worker_log_path, archive_dir):

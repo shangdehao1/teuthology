@@ -5,6 +5,8 @@ import pwd
 import re
 import time
 import yaml
+import sys
+import pprint
 
 from datetime import datetime
 from tempfile import NamedTemporaryFile
@@ -36,28 +38,43 @@ class Run(object):
         """
         args must be a config.YamlConfig object
         """
+	log.info("dehao ===>>> Run constrction")
         self.args = args
         self.name = self.make_run_name()
+	log.info("dehao ===>>> run name is [%s]", self.name)
 
         if self.args.ceph_repo:
             config.ceph_git_url = self.args.ceph_repo
+	    log.info("dehao ===>>> ceph git url is [%s]", config.ceph_git_url)
+
+	## dehao : if we use our qa, try to change it, for example : github/shangdehao1/ceph.git
         if self.args.suite_repo:
             config.ceph_qa_suite_git_url = self.args.suite_repo
+	    log.info("dehao ===>>> ceph qa suite url is [%s]", config.ceph_qa_suite_git_url)
 
         self.base_config = self.create_initial_config()
+
+	log.info("dehao ===>>>>>>>>>>>>>>>>>>>>>>>>>>")
+	log.info("dehao ===>>> after create_initial_config, the base config is as following : ")
+	pprint.pprint(self.base_config)
+	log.info("dehao ===>>>>>>>>>>>>>>>>>>>>>>>>>>")
+
         # caches package versions to minimize requests to gbs
         self.package_versions = dict()
 
+	log.info("dehao ===>>> check if need to download suite source code from web...")
         if self.args.suite_dir:
+	    log.info("dehao ===>>>   - suite_dir = [%s]. don't need to download it from web....", self.args.suite_dir)
             self.suite_repo_path = self.args.suite_dir
         else:
-            self.suite_repo_path = util.fetch_repos(
-                self.base_config.suite_branch, test_name=self.name)
+	    log.info("dehao ===>>>   - suite_dir = [None]. need to download it from web....")
+            self.suite_repo_path = util.fetch_repos(self.base_config.suite_branch, test_name=self.name)
 
         # Interpret any relative paths as being relative to ceph-qa-suite
         # (absolute paths are unchanged by this)
-        self.base_yaml_paths = [os.path.join(self.suite_repo_path, b) for b in
-                                self.args.base_yaml_paths]
+	# dehao : if we pass some yaml config file into teuthology-suite command, will be pritted here..
+        self.base_yaml_paths = [os.path.join(self.suite_repo_path, b) for b in self.args.base_yaml_paths]
+	log.info("dehao ===>>> base_yaml_path = [%s]", self.base_yaml_paths)
 
     def make_run_name(self):
         """
@@ -88,8 +105,7 @@ class Run(object):
         """
         self.kernel_dict = self.choose_kernel()
         ceph_hash = self.choose_ceph_hash()
-        # We don't store ceph_version because we don't use it yet outside of
-        # logging.
+        # We don't store ceph_version because we don't use it yet outside of logging.
         self.choose_ceph_version(ceph_hash)
         teuthology_branch = self.choose_teuthology_branch()
         suite_branch = self.choose_suite_branch()
@@ -118,6 +134,8 @@ class Run(object):
 
     def choose_kernel(self):
         # Put together a stanza specifying the kernel hash
+	log.info("dehao ===>>> choose_kernel")
+	log.info("dehao ===>>>    - kernel branch is [%s]", self.args.kernel_branch)
         if self.args.kernel_branch == 'distro':
             kernel_hash = 'distro'
         # Skip the stanza if '-k none' is given
@@ -135,8 +153,10 @@ class Run(object):
                     "Kernel branch '{branch}' not found".format(
                      branch=self.args.kernel_branch)
                 )
+
         if kernel_hash:
-            log.info("kernel sha1: {hash}".format(hash=kernel_hash))
+	    log.info("dehao ===>>>    - kernel hash is [%s]", kernel_hash)
+            # log.info("kernel sha1: {hash}".format(hash=kernel_hash))
             kernel_dict = dict(kernel=dict(kdb=True, sha1=kernel_hash))
             if kernel_hash != 'distro':
                 kernel_dict['kernel']['flavor'] = self.args.kernel_flavor
@@ -151,49 +171,57 @@ class Run(object):
         tip.
         """
         repo_name = self.ceph_repo_name
-
+        log.info("dehao ===>>> choose_ceph_hash ")
         if self.args.ceph_sha1:
+            log.info("dehao ===>>>    ceph sha1 explicitly supplied : sha1 = [%s]", self.args.ceph_sha1)
             ceph_hash = self.args.ceph_sha1
             if self.args.validate_sha1:
+            	log.info("dehao ===>>>    validate ceph sha1")
                 ceph_hash = util.git_validate_sha1(repo_name, ceph_hash)
             if not ceph_hash:
-                exc = CommitNotFoundError(
-                    self.args.ceph_sha1,
-                    '%s.git' % repo_name
-                )
+                exc = CommitNotFoundError(self.args.ceph_sha1, '%s.git' % repo_name)
                 util.schedule_fail(message=str(exc), name=self.name)
-            log.info("ceph sha1 explicitly supplied")
+	    else:
+		log.info("dehao ===>>>    yes. it is validable.")
 
         elif self.args.ceph_branch:
+            log.info("dehao ===>>>    ceph branch explicitly supplied : branch = [%s]", self.args.ceph_branch)
             ceph_hash = util.git_ls_remote(repo_name, self.args.ceph_branch)
+            log.info("dehao ===>>>    validate ceph branch ")
             if not ceph_hash:
-                exc = BranchNotFoundError(
-                    self.args.ceph_branch,
-                    '%s.git' % repo_name
-                )
+                exc = BranchNotFoundError(self.args.ceph_branch,'%s.git' % repo_name)
                 util.schedule_fail(message=str(exc), name=self.name)
+	    else:
+		log.info("dehao ===>>>    yes. it is validable.")
+		
 
-        log.info("ceph sha1: {hash}".format(hash=ceph_hash))
+        # log.info("ceph sha1: {hash}".format(hash=ceph_hash))
+        log.info("dehao ===>>> ceph sha1 = {hash}".format(hash=ceph_hash))
         return ceph_hash
 
     def choose_ceph_version(self, ceph_hash):
+	log.info("dehao ===>>> choose_ceph_version")
         if config.suite_verify_ceph_hash and not self.args.newest:
             # don't bother if newest; we'll search for an older one
             # Get the ceph package version
             try:
+                log.info('dehao ===>>>    validate ceph package version using ceph_hash[%s]', ceph_hash)
                 ceph_version = util.package_version_for_hash(
                     ceph_hash, self.args.kernel_flavor, self.args.distro,
                     self.args.distro_version, self.args.machine_type,
                 )
             except Exception as exc:
                 util.schedule_fail(str(exc), self.name)
-            log.info("ceph version: {ver}".format(ver=ceph_version))
+            log.info("dehao ===>>>    ceph version =  {ver}".format(ver=ceph_version))
             return ceph_version
         else:
-            log.info('skipping ceph package verification')
+            log.info('dehao ===>>>    skipping ceph package verification')
 
     def choose_teuthology_branch(self):
+	log.info("dehao ===>>> choose_teuthology_branch ")
         teuthology_branch = self.args.teuthology_branch
+	log.info("dehao ===>>>    teuthology_branch explicitly supplied, teuthology_branch = [%s]", self.args.teuthology_branch)
+
         if teuthology_branch and teuthology_branch != 'master':
             if not util.git_branch_exists('teuthology', teuthology_branch):
                 exc = BranchNotFoundError(teuthology_branch, 'teuthology.git')
@@ -207,6 +235,8 @@ class Run(object):
                     "branch {0} not in teuthology.git; will use master for"
                     " teuthology".format(self.args.ceph_branch))
                 teuthology_branch = 'master'
+	
+	log.info("dehao ===>>>    validate teuthology_branch [%s]", teuthology_branch)
         teuthology_hash = util.git_ls_remote(
             'teuthology',
             teuthology_branch
@@ -214,7 +244,9 @@ class Run(object):
         if not teuthology_hash:
             exc = BranchNotFoundError(teuthology_branch, build_git_url('teuthology'))
             util.schedule_fail(message=str(exc), name=self.name)
-        log.info("teuthology branch: %s %s", teuthology_branch, teuthology_hash)
+
+	log.info("dehao ===>>>    teuthology branch [%s]", teuthology_branch)
+	log.info("dehao ===>>>    teuthology hash [%s]", teuthology_hash)
         return teuthology_branch
 
     @property
@@ -236,15 +268,21 @@ class Run(object):
         return re.sub('\.git$', '', url.split('/')[-1])
 
     def choose_suite_branch(self):
+	log.info("dehao ===>>> choose_suite_branch")
         suite_repo_name = self.suite_repo_name
+	log.info("dehao ===>>>    suite_repo_name = [%s]", suite_repo_name)
+
         suite_repo_project_or_url = self.args.suite_repo or 'ceph-qa-suite'
+	log.info("dehao ===>>>    suite_repo_project_or_url = [%s]", suite_repo_project_or_url)
+
         suite_branch = self.args.suite_branch
+	log.info("dehao ===>>>    suite_branch = [%s]", suite_branch)
+
         ceph_branch = self.args.ceph_branch
+        log.info("dehao ===>>>    ceph_branch = [%s]", ceph_branch)
+
         if suite_branch and suite_branch != 'master':
-            if not util.git_branch_exists(
-                suite_repo_project_or_url,
-                suite_branch
-            ):
+            if not util.git_branch_exists(suite_repo_project_or_url, suite_branch):
                 exc = BranchNotFoundError(suite_branch, suite_repo_name)
                 util.schedule_fail(message=str(exc), name=self.name)
         elif not suite_branch:
@@ -259,9 +297,11 @@ class Run(object):
                         suite_repo_name
                     ))
                 suite_branch = 'master'
+        log.info("dehao ===>>>    Result : suite_branch = [%s]", suite_branch)
         return suite_branch
 
     def choose_suite_hash(self, suite_branch):
+	log.info("dehao ===>>> choose_suite_hash")
         suite_repo_name = self.suite_repo_name
         suite_repo_project_or_url = self.args.suite_repo or 'ceph-qa-suite'
         suite_hash = util.git_ls_remote(
@@ -271,7 +311,12 @@ class Run(object):
         if not suite_hash:
             exc = BranchNotFoundError(suite_branch, suite_repo_name)
             util.schedule_fail(message=str(exc), name=self.name)
-        log.info("%s branch: %s %s", suite_repo_name, suite_branch, suite_hash)
+        # log.info("%s branch: %s %s", suite_repo_name, suite_branch, suite_hash)
+	log.info("dehao ===>>>    suite_hash is [%s]", suite_hash)
+	# if ceph package hash and github_ceph_ceph_master hash change, sync this hash with them...
+	#suite_hash = "1de3145af0523fe0eb12e2a14c3aa2c4cd8e1fe2" ##### <<<<====
+	suite_hash = "9f4e13571a38f21a7ec9aa6965bba4b29a3140d2" ##### <<<<====
+	log.info("DEHAO ERROR ===>>>    suite_hash is [%s]", suite_hash)
         return suite_hash
 
     def build_base_config(self):
@@ -345,12 +390,16 @@ class Run(object):
 
         # Make sure the yaml paths are actually valid
         for yaml_path in self.base_yaml_paths:
+	    log.info("dehao ===>>> check if yaml file path is valid. yaml file derive from teuthology-suite command")
             full_yaml_path = os.path.join(self.suite_repo_path, yaml_path)
             if not os.path.exists(full_yaml_path):
                 raise IOError("File not found: " + full_yaml_path)
+	    else:
+		log.info("dehao ===>>>    [%s] is valid.", full_yaml_path)
 
         num_jobs = self.schedule_suite()
 
+	# dehao : schedule last_suite_job
         if num_jobs:
             self.write_result()
 
@@ -497,23 +546,26 @@ class Run(object):
             'suites',
             self.base_config.suite.replace(':', '/'),
         ))
-        log.debug('Suite %s in %s' % (suite_name, suite_path))
+        # log.debug('Suite %s in %s' % (suite_name, suite_path))
+        log.info('dehao ===>>> suite [%s] in [%s]' % (suite_name, suite_path))
         configs = [
             (combine_path(suite_name, item[0]), item[1]) for item in
             build_matrix(suite_path, subset=self.args.subset, seed=self.args.seed)
         ]
-        log.info('Suite %s in %s generated %d jobs (not yet filtered)' % (
-            suite_name, suite_path, len(configs)))
+
+	log.info("dehao ===>>> Not filtered - suite name is [%s]", suite_name)
+	log.info("dehao ===>>> Not filtered - suite path is [%s]", suite_path)
+	log.info("dehao ===>>> Not filtered - suite jobs is [%d]", len(configs))
+
+	# pprint.pprint(configs)
 
         if self.args.dry_run:
-            log.debug("Base job config:\n%s" % self.base_config)
+            log.info("Base job config:\n%s" % self.base_config)
 
         # create, but do not write, the temp file here, so it can be
         # added to the args in collect_jobs, but not filled until
         # any backtracking is done
-        base_yaml_path = NamedTemporaryFile(
-            prefix='schedule_suite_', delete=False
-        ).name
+        base_yaml_path = NamedTemporaryFile(prefix='schedule_suite_', delete=False).name
         self.base_yaml_paths.insert(0, base_yaml_path)
 
         # if newest, do this until there are no missing packages
@@ -521,11 +573,10 @@ class Run(object):
         backtrack = 0
         limit = self.args.newest
         while backtrack <= limit:
-            jobs_missing_packages, jobs_to_schedule = \
-                self.collect_jobs(arch, configs, self.args.newest)
+	    log.info("dehao ===>>> backtrack -- [%d]....", backtrack)
+            jobs_missing_packages, jobs_to_schedule = self.collect_jobs(arch, configs, self.args.newest)
             if jobs_missing_packages and self.args.newest:
-                new_sha1 = \
-                    util.find_git_parent('ceph', self.base_config.sha1)
+                new_sha1 = util.find_git_parent('ceph', self.base_config.sha1)
                 if new_sha1 is None:
                     util.schedule_fail('Backtrack for --newest failed', name)
                  # rebuild the base config to resubstitute sha1
@@ -534,22 +585,20 @@ class Run(object):
                 backtrack += 1
                 continue
             if backtrack:
-                log.info("--newest supplied, backtracked %d commits to %s" %
-                         (backtrack, self.base_config.sha1))
+                log.info("--newest supplied, backtracked %d commits to %s" % (backtrack, self.base_config.sha1))
             break
         else:
             if self.args.newest:
-                util.schedule_fail(
-                    'Exceeded %d backtracks; raise --newest value' % limit,
-                    name,
-                )
+                util.schedule_fail('Exceeded %d backtracks; raise --newest value' % limit, name,)
 
         if self.args.dry_run:
             log.debug("Base job config:\n%s" % self.base_config)
 
         with open(base_yaml_path, 'w+b') as base_yaml:
             base_yaml.write(str(self.base_config))
+	    log.info("dehao ===>>> write base config to yaml file [%s]", base_yaml_path)
 
+	## dehao : schedule first_suite_job
         if jobs_to_schedule:
             self.write_rerun_memo()
 
@@ -559,14 +608,8 @@ class Run(object):
 
         count = len(jobs_to_schedule)
         missing_count = len(jobs_missing_packages)
-        log.info(
-            'Suite %s in %s scheduled %d jobs.' %
-            (suite_name, suite_path, count)
-        )
-        log.info('%d/%d jobs were filtered out.',
-                 (len(configs) - count),
-                 len(configs))
+        log.info('Suite %s in %s scheduled %d jobs.' % (suite_name, suite_path, count))
+        log.info('%d/%d jobs were filtered out.', (len(configs) - count), len(configs))
         if missing_count:
-            log.warn('Scheduled %d/%d jobs that are missing packages!',
-                     missing_count, count)
+            log.warn('Scheduled %d/%d jobs that are missing packages!', missing_count, count)
         return count

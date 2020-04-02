@@ -4,6 +4,7 @@ import json
 import logging
 import os
 import subprocess
+import sys
 
 import yaml
 
@@ -175,6 +176,7 @@ def openstack_remove_again():
 
 
 def main(args):
+    log.info("dehao ===>>> enter teuthology-nuke \n\n")
     ctx = FakeNamespace(args)
     if ctx.verbose:
         teuthology.log.setLevel(logging.DEBUG)
@@ -209,15 +211,14 @@ def main(args):
         stale_openstack(ctx)
         return
 
-    log.info(
-        '\n  '.join(
-            ['targets:', ] + yaml.safe_dump(
-                ctx.config['targets'],
-                default_flow_style=False).splitlines()))
+    log.info('\n  '.join(['targets:', ] + yaml.safe_dump(ctx.config['targets'], default_flow_style=False).splitlines()))
 
     if ctx.dry_run:
         log.info("Not actually nuking anything since --dry-run was passed")
         return
+
+    log.info("======================================== nuke exit ===============================================")
+    sys.exit(0)
 
     if ctx.owner is None:
         ctx.owner = get_user()
@@ -255,7 +256,7 @@ def nuke(ctx, should_unlock, sync_clocks=True, reboot_all=True, noipmi=False):
     with parallel() as p:
         for target, hostkey in ctx.config['targets'].items():
             p.spawn(
-                nuke_one,
+                nuke_one, ## <<===
                 ctx,
                 {target: hostkey},
                 should_unlock,
